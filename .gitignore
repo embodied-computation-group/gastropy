@@ -28,6 +28,7 @@ docs/_build/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
