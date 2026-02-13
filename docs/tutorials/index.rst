@@ -1,13 +1,10 @@
 Tutorials
 =========
 
-Tutorials will be added here as GastroPy modules are implemented.
-Each tutorial is a Jupyter notebook demonstrating a specific aspect
-of the EGG processing pipeline.
+Step-by-step guides demonstrating how to use GastroPy for EGG signal
+processing and analysis.
 
-.. Planned tutorials:
-   - Loading and inspecting EGG data
-   - EGG signal preprocessing
-   - Time-frequency analysis of gastric rhythm
-   - Computing EGG metrics
-   - Gastric-brain coupling with fMRI
+.. toctree::
+   :maxdepth: 2
+
+   egg_processing
