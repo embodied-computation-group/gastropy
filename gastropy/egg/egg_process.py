@@ -143,12 +143,14 @@ def egg_process(data, sfreq, band=None, method="fir", **filter_kwargs):
     bp = band_power(psd_freqs, psd_values, band)
 
     # Build output DataFrame
-    signals = pd.DataFrame({
-        "raw": data,
-        "filtered": filtered,
-        "phase": phase,
-        "amplitude": amplitude,
-    })
+    signals = pd.DataFrame(
+        {
+            "raw": data,
+            "filtered": filtered,
+            "phase": phase,
+            "amplitude": amplitude,
+        }
+    )
 
     info = {
         "sfreq": sfreq,
