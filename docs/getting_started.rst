@@ -197,6 +197,9 @@ normogastria, tachygastria) for per-band metrics.
 What's Next
 -----------
 
+For a hands-on walkthrough using real EGG data, see the
+:doc:`EGG Signal Processing Tutorial <tutorials/egg_processing>`.
+
 GastroPy is under active development. Upcoming modules include
 gastric-brain phase coupling, data I/O with BIDS support, and
 statistical testing. See the :doc:`API Reference <api/index>`
