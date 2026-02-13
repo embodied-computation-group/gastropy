@@ -4,12 +4,12 @@ import numpy as np
 from scipy import signal as sp_signal
 
 
-def psd_welch(data, sfreq, fmin=0.0, fmax=0.1):
+def psd_welch(data, sfreq, fmin=0.0, fmax=0.1, overlap=0.25):
     """Compute power spectral density using Welch's method.
 
-    Uses 200-second Hann windows with 25% overlap and 1000-second
-    zero-padding for fine frequency resolution, matching standard
-    EGG analysis parameters.
+    Uses 200-second Hann windows and 1000-second zero-padding for
+    fine frequency resolution, matching standard EGG analysis
+    parameters.
 
     Parameters
     ----------
@@ -21,6 +21,10 @@ def psd_welch(data, sfreq, fmin=0.0, fmax=0.1):
         Minimum frequency to return (Hz). Default is 0.0.
     fmax : float, optional
         Maximum frequency to return (Hz). Default is 0.1.
+    overlap : float, optional
+        Fraction of segment overlap (0 to 1). Default is 0.25.
+        Use 0.75 for smoother estimates on short recordings
+        (Wolpert et al. 2020 convention).
 
     Returns
     -------
@@ -41,7 +45,7 @@ def psd_welch(data, sfreq, fmin=0.0, fmax=0.1):
 
     nperseg = int(round(sfreq * 200.0))
     nperseg = max(nperseg, int(sfreq * 60.0))
-    noverlap = int(0.25 * nperseg)
+    noverlap = int(overlap * nperseg)
     nfft = int(round(sfreq * 1000.0))
 
     freqs, psd = sp_signal.welch(

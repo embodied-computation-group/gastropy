@@ -62,6 +62,18 @@ class TestSelectPeakFrequency:
         peak_freq, freqs, psd = select_peak_frequency(sig, sfreq=10.0)
         assert abs(peak_freq - 0.05) < 0.005
 
+    def test_finds_peak_not_edge(self):
+        """find_peaks should select a true local maximum, not a band edge."""
+        rng = np.random.default_rng(99)
+        sfreq = 10.0
+        t = np.arange(0, 300, 1.0 / sfreq)
+        # Signal with peak at 0.05 Hz plus weaker peak at 0.04 Hz
+        sig = 3.0 * np.sin(2 * np.pi * 0.05 * t) + 1.0 * np.sin(2 * np.pi * 0.04 * t)
+        sig += 0.1 * rng.standard_normal(len(t))
+        peak_freq, _, _ = select_peak_frequency(sig, sfreq=sfreq)
+        # Should pick the dominant peak at 0.05, not 0.04 or band edges
+        assert abs(peak_freq - 0.05) < 0.005
+
 
 # ---------------------------------------------------------------------------
 # egg_clean

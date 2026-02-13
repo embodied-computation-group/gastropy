@@ -55,6 +55,26 @@ class TestPsdWelch:
         _, psd = psd_welch(sig, sfreq=10.0)
         assert np.all(psd >= 0)
 
+    def test_overlap_parameter(self):
+        """Custom overlap should change PSD values but keep same peak."""
+        _, sig = _make_sinusoid(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.2)
+        freqs_25, psd_25 = psd_welch(sig, sfreq=10.0, overlap=0.25)
+        freqs_75, psd_75 = psd_welch(sig, sfreq=10.0, overlap=0.75)
+        # Same frequency axis
+        np.testing.assert_array_equal(freqs_25, freqs_75)
+        # Both find the correct peak
+        assert abs(freqs_25[np.argmax(psd_25)] - 0.05) < 0.005
+        assert abs(freqs_75[np.argmax(psd_75)] - 0.05) < 0.005
+        # PSD values differ due to different overlap
+        assert not np.allclose(psd_25, psd_75)
+
+    def test_overlap_zero(self):
+        """Zero overlap should work without error."""
+        _, sig = _make_sinusoid(sfreq=10.0, duration=300.0)
+        freqs, psd = psd_welch(sig, sfreq=10.0, overlap=0.0)
+        assert len(freqs) > 0
+        assert np.all(psd >= 0)
+
 
 # ---------------------------------------------------------------------------
 # design_fir_bandpass
