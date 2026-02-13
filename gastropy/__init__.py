@@ -28,6 +28,7 @@ misc       — Miscellaneous utilities
 __version__ = "0.1.0"
 
 # Flat namespace re-exports for implemented modules
+from .data import *  # noqa: F401, F403
 from .egg import *  # noqa: F401, F403
 from .metrics import *  # noqa: F401, F403
 from .signal import *  # noqa: F401, F403
@@ -42,5 +43,4 @@ from .timefreq import *  # noqa: F401, F403
 # from .viz import *
 # from .io import *
 # from .stats import *
-# from .data import *
 # from .misc import *
