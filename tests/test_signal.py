@@ -13,10 +13,10 @@ from gastropy.signal import (
     resample_signal,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_sinusoid(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.0):
     """Create a sinusoidal test signal."""
@@ -31,6 +31,7 @@ def _make_sinusoid(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.0):
 # ---------------------------------------------------------------------------
 # psd_welch
 # ---------------------------------------------------------------------------
+
 
 class TestPsdWelch:
     def test_peak_at_signal_frequency(self):
@@ -59,6 +60,7 @@ class TestPsdWelch:
 # design_fir_bandpass
 # ---------------------------------------------------------------------------
 
+
 class TestDesignFirBandpass:
     def test_returns_odd_numtaps(self):
         """FIR filter should have an odd number of taps."""
@@ -80,6 +82,7 @@ class TestDesignFirBandpass:
 # ---------------------------------------------------------------------------
 # apply_bandpass
 # ---------------------------------------------------------------------------
+
 
 class TestApplyBandpass:
     def test_fir_preserves_in_band_signal(self):
@@ -120,6 +123,7 @@ class TestApplyBandpass:
 # instantaneous_phase
 # ---------------------------------------------------------------------------
 
+
 class TestInstantaneousPhase:
     def test_phase_is_bounded(self):
         """Phase should be in [-pi, pi]."""
@@ -139,6 +143,7 @@ class TestInstantaneousPhase:
 # ---------------------------------------------------------------------------
 # cycle_durations
 # ---------------------------------------------------------------------------
+
 
 class TestCycleDurations:
     def test_known_period(self):
@@ -165,6 +170,7 @@ class TestCycleDurations:
 # mean_phase_per_window
 # ---------------------------------------------------------------------------
 
+
 class TestMeanPhasePerWindow:
     def test_returns_correct_length(self):
         """Should return one phase value per window."""
@@ -187,6 +193,7 @@ class TestMeanPhasePerWindow:
 # ---------------------------------------------------------------------------
 # resample_signal
 # ---------------------------------------------------------------------------
+
 
 class TestResampleSignal:
     def test_correct_output_length(self):

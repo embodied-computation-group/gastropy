@@ -1,14 +1,13 @@
 """Tests for gastropy.neuro.fmri module."""
 
 import numpy as np
-import pytest
 
 from gastropy.neuro.fmri import apply_volume_cuts, create_volume_windows, find_scanner_triggers, phase_per_volume
-
 
 # ---------------------------------------------------------------------------
 # Mock MNE Annotations (no real MNE dependency needed for testing)
 # ---------------------------------------------------------------------------
+
 
 class MockAnnotations:
     """Minimal mock of mne.Annotations for testing."""
@@ -21,6 +20,7 @@ class MockAnnotations:
 # ---------------------------------------------------------------------------
 # find_scanner_triggers
 # ---------------------------------------------------------------------------
+
 
 class TestFindScannerTriggers:
     def test_exact_label_match(self):
@@ -66,6 +66,7 @@ class TestFindScannerTriggers:
 # create_volume_windows
 # ---------------------------------------------------------------------------
 
+
 class TestCreateVolumeWindows:
     def test_correct_number_of_windows(self):
         """Should create the requested number of windows."""
@@ -94,6 +95,7 @@ class TestCreateVolumeWindows:
 # phase_per_volume
 # ---------------------------------------------------------------------------
 
+
 class TestPhasePerVolume:
     def test_returns_phase_per_window(self):
         """Should return one phase per window."""
@@ -110,6 +112,7 @@ class TestPhasePerVolume:
 # ---------------------------------------------------------------------------
 # apply_volume_cuts
 # ---------------------------------------------------------------------------
+
 
 class TestApplyVolumeCuts:
     def test_correct_trimming(self):

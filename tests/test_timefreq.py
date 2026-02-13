@@ -1,15 +1,14 @@
 """Tests for gastropy.timefreq module."""
 
 import numpy as np
-import pytest
 
-from gastropy.metrics import BRADYGASTRIA, GASTRIC_BANDS, NORMOGASTRIA, TACHYGASTRIA
+from gastropy.metrics import BRADYGASTRIA, GASTRIC_BANDS, NORMOGASTRIA
 from gastropy.timefreq import band_decompose, multiband_analysis
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_signal(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.1):
     """Create a synthetic sinusoidal signal."""
@@ -22,6 +21,7 @@ def _make_signal(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.1):
 # ---------------------------------------------------------------------------
 # band_decompose
 # ---------------------------------------------------------------------------
+
 
 class TestBandDecompose:
     def test_detects_peak_in_normogastric_band(self):
@@ -102,6 +102,7 @@ class TestBandDecompose:
 # ---------------------------------------------------------------------------
 # multiband_analysis
 # ---------------------------------------------------------------------------
+
 
 class TestMultibandAnalysis:
     def test_returns_all_three_bands(self):
