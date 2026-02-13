@@ -33,6 +33,7 @@ from .egg import *  # noqa: F401, F403
 from .metrics import *  # noqa: F401, F403
 from .signal import *  # noqa: F401, F403
 from .timefreq import *  # noqa: F401, F403
+from .viz import *  # noqa: F401, F403
 
 # Modules with content but not re-exported at top level
 # (access via gastropy.neuro.fmri, etc.)
@@ -40,7 +41,6 @@ from .timefreq import *  # noqa: F401, F403
 
 # Modules not yet implemented — uncomment as they gain content
 # from .coupling import *
-# from .viz import *
 # from .io import *
 # from .stats import *
 # from .misc import *
