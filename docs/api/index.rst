@@ -74,6 +74,21 @@ Decompose signals across gastric frequency bands.
    band_decompose
    multiband_analysis
 
+Data --- Sample Datasets
+------------------------
+
+Load bundled example EGG recordings for tutorials and testing.
+
+.. currentmodule:: gastropy
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   load_fmri_egg
+   load_egg
+   list_datasets
+
 Neuro --- Neuroimaging Utilities
 --------------------------------
 
