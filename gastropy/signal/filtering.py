@@ -109,20 +109,24 @@ def apply_bandpass(data, sfreq, low_hz, high_hz, method="fir", **kwargs):
         except TypeError:
             filtered = sp_signal.filtfilt(b, a, data)
             filtfilt_method = "pad"
-        info.update({
-            "filter_method": "fir",
-            "fir_numtaps": int(len(b)),
-            "fir_window": fir_kwargs.get("window", "hann"),
-            "filtfilt_method": filtfilt_method,
-        })
+        info.update(
+            {
+                "filter_method": "fir",
+                "fir_numtaps": int(len(b)),
+                "fir_window": fir_kwargs.get("window", "hann"),
+                "filtfilt_method": filtfilt_method,
+            }
+        )
     elif method.lower() == "iir":
         order = kwargs.get("order", 4)
         sos = sp_signal.butter(order, [low_hz, high_hz], btype="band", fs=sfreq, output="sos")
         filtered = sp_signal.sosfiltfilt(sos, data)
-        info.update({
-            "filter_method": "iir_butter",
-            "butter_order": order,
-        })
+        info.update(
+            {
+                "filter_method": "iir_butter",
+                "butter_order": order,
+            }
+        )
     else:
         raise ValueError(f"Unknown filter method: {method!r}. Use 'fir' or 'iir'.")
 
