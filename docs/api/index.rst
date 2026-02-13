@@ -62,6 +62,18 @@ Gastric rhythm metrics and quality assessment.
    TACHYGASTRIA
    GASTRIC_BANDS
 
+Time-Frequency --- Per-Band Decomposition
+------------------------------------------
+
+Decompose signals across gastric frequency bands.
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   band_decompose
+   multiband_analysis
+
 Neuro --- Neuroimaging Utilities
 --------------------------------
 

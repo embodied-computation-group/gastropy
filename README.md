@@ -33,11 +33,11 @@ and MEG.
 | **`gastropy.signal`** | Welch PSD, FIR/IIR bandpass filtering, Hilbert phase extraction, cycle detection, resampling |
 | **`gastropy.metrics`** | Gastric frequency bands, band power, instability coefficient, cycle statistics, quality assessment |
 | **`gastropy.egg`** | High-level pipeline (`egg_process`), channel selection, peak frequency detection |
+| **`gastropy.timefreq`** | Per-band narrowband decomposition, cycle analysis across brady/normo/tachy bands |
 | **`gastropy.neuro.fmri`** | Scanner trigger parsing, volume windowing, per-volume phase, transient removal |
 
-> **Planned:** time-frequency analysis, gastric-brain phase coupling,
-> visualization, data I/O with BIDS support, and sample datasets.
-> See the [Roadmap](#roadmap) below.
+> **Planned:** gastric-brain phase coupling, visualization, data I/O
+> with BIDS support, and sample datasets. See the [Roadmap](#roadmap) below.
 
 ## Installation
 
@@ -135,7 +135,7 @@ GastroPy is under active development. Current status:
 - [x] `gastropy.metrics` — band power, instability coefficient, quality control
 - [x] `gastropy.egg` — high-level pipeline, channel selection
 - [x] `gastropy.neuro.fmri` — scanner triggers, volume windowing
-- [ ] `gastropy.timefreq` — wavelets, spectrograms
+- [x] `gastropy.timefreq` — per-band decomposition and cycle analysis
 - [ ] `gastropy.coupling` — gastric-brain phase coupling
 - [ ] `gastropy.viz` — publication-ready plotting
 - [ ] `gastropy.io` — data I/O, BIDS support
