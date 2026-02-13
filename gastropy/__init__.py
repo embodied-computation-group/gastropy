@@ -16,7 +16,7 @@ egg        — Core EGG processing (clean, process, analyze)
 signal     — General signal processing utilities
 metrics    — Metric extraction (band power, instability, etc.)
 neuro      — Neuroimaging utilities (fMRI, EEG, MEG)
-timefreq   — Time-frequency analysis (wavelets, spectrograms)
+timefreq   — Per-band time-frequency decomposition
 coupling   — Gastric-brain phase coupling analyses
 viz        — Visualization
 io         — Data I/O and BIDS support
@@ -31,13 +31,13 @@ __version__ = "0.1.0"
 from .egg import *  # noqa: F401, F403
 from .metrics import *  # noqa: F401, F403
 from .signal import *  # noqa: F401, F403
+from .timefreq import *  # noqa: F401, F403
 
 # Modules with content but not re-exported at top level
 # (access via gastropy.neuro.fmri, etc.)
 # from .neuro import *
 
 # Modules not yet implemented — uncomment as they gain content
-# from .timefreq import *
 # from .coupling import *
 # from .viz import *
 # from .io import *
