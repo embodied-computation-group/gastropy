@@ -157,15 +157,19 @@ phases = apply_volume_cuts(phases, begin_cut=21, end_cut=21)
 fig, ax = gp.plot_volume_phase(phases, tr=1.856, cut_start=21, cut_end=21)
 ```
 
-## Tutorials
+## Tutorials & Examples
 
 Learn EGG processing from scratch with our step-by-step tutorial using real
 data from Wolpert et al. (2020):
 
-- **[EGG Signal Processing](https://embodied-computation-group.github.io/gastropy/tutorials/egg_processing.html)** —
-  Load multi-channel EGG data, compute PSD, select the best channel, bandpass
-  filter, extract phase and amplitude, detect artifacts, compute quality
-  metrics, and run multi-band analysis. No prior EGG experience needed.
+- **[EGG Signal Processing Tutorial](https://embodied-computation-group.github.io/gastropy/tutorials/egg_processing.html)** —
+  Full walkthrough from raw data to publication-ready metrics. No prior EGG
+  experience needed.
+
+Browse the **[Examples Gallery](https://embodied-computation-group.github.io/gastropy/examples/index.html)** for
+short, focused examples of individual functions: PSD plots, signal overviews,
+cycle histograms, artifact detection, channel selection, multi-band analysis,
+fMRI-EGG pipelines, and more.
 
 ## Documentation
 
