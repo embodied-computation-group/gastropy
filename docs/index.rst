@@ -25,6 +25,12 @@ import through signal processing to advanced gastric-brain coupling analyses.
 
    tutorials/index
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   examples/index
+
 Indices and tables
 ==================
 
