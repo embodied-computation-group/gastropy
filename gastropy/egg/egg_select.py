@@ -1,9 +1,32 @@
 """EGG channel and frequency selection."""
 
 import numpy as np
+from scipy.signal import find_peaks
 
 from ..metrics import NORMOGASTRIA
 from ..signal import psd_welch
+
+
+def _find_best_peak(psd_band, freqs_band):
+    """Find the tallest local maximum in a PSD band.
+
+    Uses ``scipy.signal.find_peaks`` for robust peak detection
+    (following Wolpert et al. 2020). Falls back to argmax if no
+    local peaks are found (e.g., monotonic spectrum slope).
+    """
+    if len(psd_band) < 3:
+        i_max = int(np.argmax(psd_band))
+        return float(freqs_band[i_max]), float(psd_band[i_max])
+
+    peak_indices, _ = find_peaks(psd_band)
+    if len(peak_indices) == 0:
+        # No local peaks — fall back to global maximum
+        i_max = int(np.argmax(psd_band))
+        return float(freqs_band[i_max]), float(psd_band[i_max])
+
+    # Pick the tallest peak
+    tallest = peak_indices[np.argmax(psd_band[peak_indices])]
+    return float(freqs_band[tallest]), float(psd_band[tallest])
 
 
 def select_best_channel(data, sfreq, band=None, fmin=0.0, fmax=0.1):
@@ -11,7 +34,8 @@ def select_best_channel(data, sfreq, band=None, fmin=0.0, fmax=0.1):
 
     Ranks channels by peak power in the target frequency band
     (default: normogastria, 2-4 cpm) computed from the unfiltered
-    low-frequency PSD.
+    low-frequency PSD. Uses ``scipy.signal.find_peaks`` for robust
+    local-maximum detection, following Wolpert et al. (2020).
 
     Parameters
     ----------
@@ -65,12 +89,11 @@ def select_best_channel(data, sfreq, band=None, fmin=0.0, fmax=0.1):
             continue
         psd_band = psd[mask]
         freqs_band = freqs[mask]
-        i_max = int(np.argmax(psd_band))
-        peak = psd_band[i_max]
+        freq, peak = _find_best_peak(psd_band, freqs_band)
         if peak > best_peak:
-            best_peak = float(peak)
+            best_peak = peak
             best_idx = int(ch_idx)
-            best_freq = float(freqs_band[i_max])
+            best_freq = freq
             best_freqs = freqs
             best_psd = psd
 
@@ -82,6 +105,9 @@ def select_best_channel(data, sfreq, band=None, fmin=0.0, fmax=0.1):
 
 def select_peak_frequency(data, sfreq, band=None, fmin=0.0, fmax=0.1):
     """Find the peak frequency in the gastric band from a single channel.
+
+    Uses ``scipy.signal.find_peaks`` for robust local-maximum detection.
+    Falls back to argmax if no local peaks are found.
 
     Parameters
     ----------
@@ -124,5 +150,5 @@ def select_peak_frequency(data, sfreq, band=None, fmin=0.0, fmax=0.1):
 
     psd_band = psd[mask]
     freqs_band = freqs[mask]
-    i_max = int(np.argmax(psd_band))
-    return float(freqs_band[i_max]), freqs, psd
+    freq, _ = _find_best_peak(psd_band, freqs_band)
+    return freq, freqs, psd
