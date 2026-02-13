@@ -50,9 +50,20 @@ pip install gastropy[dev]
 ## Quick Example
 
 ```python
+import numpy as np
 import gastropy as gp
 
-# Coming soon — GastroPy is under active development!
+# Simulate a 5-minute EGG recording (3 cpm at 10 Hz)
+sfreq = 10.0
+t = np.arange(0, 300, 1 / sfreq)
+signal = np.sin(2 * np.pi * 0.05 * t) + 0.1 * np.random.randn(len(t))
+
+# Run the full processing pipeline
+signals, info = gp.egg_process(signal, sfreq)
+
+print(f"Peak frequency:  {info['peak_freq_hz']:.3f} Hz")
+print(f"Cycles detected: {info['cycle_stats']['n_cycles']}")
+print(f"Instability IC:  {info['instability_coefficient']:.4f}")
 ```
 
 ## Documentation
