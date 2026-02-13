@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gastropy"
+version = "0.1.0"
+description = "A Python package for electrogastrography (EGG) signal processing and gastric-brain coupling analysis."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Micah Allen" },
+]
+keywords = [
+    "electrogastrography",
+    "EGG",
+    "gastric",
+    "signal-processing",
+    "neuroscience",
+    "brain-gut",
+    "phase-coupling",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+neuro = [
+    "mne>=1.5",
+    "nilearn>=0.10",
+    "nibabel>=5.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "pre-commit>=3.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "sphinx-book-theme>=1.0",
+    "myst-nb>=1.0",
+    "numpydoc>=1.6",
+    "sphinx-copybutton>=0.5",
+    "sphinx-autodoc-typehints>=2.0",
+]
+all = ["gastropy[neuro,dev,docs]"]
+
+[project.urls]
+Homepage = "https://github.com/embodied-computation-group/gastropy"
+Documentation = "https://embodied-computation-group.github.io/gastropy"
+Repository = "https://github.com/embodied-computation-group/gastropy"
+Issues = "https://github.com/embodied-computation-group/gastropy/issues"
+
+# --- Tool Configuration ---
+
+[tool.hatch.build.targets.wheel]
+packages = ["gastropy"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "NPY", # NumPy-specific rules
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["gastropy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
