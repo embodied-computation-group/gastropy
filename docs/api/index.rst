@@ -1,75 +1,80 @@
 API Reference
 =============
 
-This section documents the GastroPy public API. All functions are accessible
-from the top-level ``gastropy`` namespace.
+GastroPy exposes a flat namespace: most functions are accessible directly
+from ``import gastropy as gp``. The reference below is organized by
+submodule.
 
 .. contents:: Modules
    :local:
    :depth: 1
 
-EGG
----
+.. currentmodule:: gastropy
 
-.. automodule:: gastropy.egg
-   :members:
+EGG --- Core Pipeline
+---------------------
 
-Signal
-------
+High-level functions for EGG signal processing.
 
-.. automodule:: gastropy.signal
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Time-Frequency
---------------
+   egg_process
+   egg_clean
+   select_best_channel
+   select_peak_frequency
 
-.. automodule:: gastropy.timefreq
-   :members:
+Signal --- DSP Utilities
+------------------------
 
-Metrics
--------
+Low-level signal processing building blocks.
 
-.. automodule:: gastropy.metrics
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Coupling
---------
+   psd_welch
+   design_fir_bandpass
+   apply_bandpass
+   instantaneous_phase
+   cycle_durations
+   mean_phase_per_window
+   resample_signal
 
-.. automodule:: gastropy.coupling
-   :members:
+Metrics --- Rhythm Quantification
+---------------------------------
 
-Neuro
------
+Gastric rhythm metrics and quality assessment.
 
-.. automodule:: gastropy.neuro
-   :members:
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-Visualization
--------------
+   band_power
+   instability_coefficient
+   cycle_stats
+   proportion_normogastric
+   assess_quality
+   GastricBand
+   NORMOGASTRIA
+   BRADYGASTRIA
+   TACHYGASTRIA
+   GASTRIC_BANDS
 
-.. automodule:: gastropy.viz
-   :members:
+Neuro --- Neuroimaging Utilities
+--------------------------------
 
-I/O
----
+Functions specific to gastric-brain coupling with fMRI, EEG, and MEG.
+Access via ``gastropy.neuro.fmri``.
 
-.. automodule:: gastropy.io
-   :members:
+.. currentmodule:: gastropy.neuro.fmri
 
-Statistics
-----------
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
-.. automodule:: gastropy.stats
-   :members:
-
-Data
-----
-
-.. automodule:: gastropy.data
-   :members:
-
-Miscellaneous
--------------
-
-.. automodule:: gastropy.misc
-   :members:
+   find_scanner_triggers
+   create_volume_windows
+   phase_per_volume
+   apply_volume_cuts

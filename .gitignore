@@ -24,6 +24,8 @@ htmlcov/
 
 # Documentation build
 docs/_build/
+docs/api/generated/
+docs/.jupyter_cache/
 
 # IDE
 .vscode/
