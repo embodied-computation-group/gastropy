@@ -30,14 +30,16 @@ and MEG.
 
 | Module | What it does |
 |---|---|
-| **`gastropy.signal`** | Welch PSD, FIR/IIR bandpass filtering, Hilbert phase extraction, cycle detection, resampling |
+| **`gastropy.signal`** | Welch PSD, FIR/IIR bandpass filtering, Hilbert phase extraction, cycle detection, resampling, phase-based artifact detection |
 | **`gastropy.metrics`** | Gastric frequency bands, band power, instability coefficient, cycle statistics, quality assessment |
-| **`gastropy.egg`** | High-level pipeline (`egg_process`), channel selection, peak frequency detection |
+| **`gastropy.egg`** | High-level pipeline (`egg_process`), channel selection (`find_peaks`), peak frequency detection |
 | **`gastropy.timefreq`** | Per-band narrowband decomposition, cycle analysis across brady/normo/tachy bands |
+| **`gastropy.viz`** | PSD plots, EGG overview panels, cycle histograms, artifact displays, fMRI volume phase |
+| **`gastropy.data`** | Bundled sample datasets (fMRI-EGG and standalone EGG recordings) |
 | **`gastropy.neuro.fmri`** | Scanner trigger parsing, volume windowing, per-volume phase, transient removal |
 
-> **Planned:** gastric-brain phase coupling, visualization, data I/O
-> with BIDS support, and sample datasets. See the [Roadmap](#roadmap) below.
+> **Planned:** gastric-brain phase coupling, data I/O with BIDS support,
+> EEG/MEG utilities, and statistical testing. See the [Roadmap](#roadmap) below.
 
 ## Installation
 
@@ -59,6 +61,17 @@ pip install -e ".[all]"     # everything
 
 ## Quick Start
 
+### Load sample data
+
+```python
+import gastropy as gp
+
+# Bundled sample datasets — no external downloads needed
+data = gp.load_egg()                        # standalone 7-channel EGG
+fmri = gp.load_fmri_egg(session="0001")     # fMRI-concurrent 8-channel EGG
+gp.list_datasets()                           # see all available datasets
+```
+
 ### One-liner pipeline
 
 ```python
@@ -73,22 +86,41 @@ signal = np.sin(2 * np.pi * 0.05 * t) + 0.1 * np.random.randn(len(t))
 # Full processing in one call
 signals, info = gp.egg_process(signal, sfreq)
 
-print(signals.head())
-#        raw  filtered     phase  amplitude
-# 0  0.0175    0.0012 -2.356194     0.0038
-# ...
-
 print(f"Peak frequency : {info['peak_freq_hz']:.3f} Hz")
 print(f"Cycles detected: {info['cycle_stats']['n_cycles']}")
 print(f"Instability IC : {info['instability_coefficient']:.4f}")
 print(f"% Normogastric : {info['proportion_normogastric']:.0%}")
 ```
 
+### Artifact detection
+
+```python
+# Detect phase artifacts (non-monotonic phase + duration outliers)
+artifacts = gp.detect_phase_artifacts(signals["phase"].values, t)
+print(f"Artifact cycles: {artifacts['n_artifacts']}")
+```
+
+### Visualization
+
+```python
+# PSD with normogastric band shading
+fig, ax = gp.plot_psd(freqs, psd)
+
+# 4-panel EGG overview (raw, filtered, phase, amplitude)
+fig, axes = gp.plot_egg_overview(signals, sfreq)
+
+# Cycle duration histogram
+fig, ax = gp.plot_cycle_histogram(info["cycle_durations_s"])
+
+# Phase with artifact overlay
+fig, ax = gp.plot_artifacts(signals["phase"].values, t, artifacts)
+```
+
 ### Step-by-step control
 
 ```python
-# Spectral analysis
-freqs, psd = gp.psd_welch(signal, sfreq, fmin=0.01, fmax=0.1)
+# Spectral analysis (overlap parameter for smoothing control)
+freqs, psd = gp.psd_welch(signal, sfreq, fmin=0.01, fmax=0.1, overlap=0.75)
 
 # Bandpass filter to normogastric band (2-4 cpm)
 filtered, filt_info = gp.apply_bandpass(signal, sfreq, low_hz=0.033, high_hz=0.067)
@@ -120,6 +152,9 @@ onsets = find_scanner_triggers(raw.annotations, label="R128")
 windows = create_volume_windows(onsets, tr=1.856, n_volumes=420)
 phases = phase_per_volume(analytic, windows)
 phases = apply_volume_cuts(phases, begin_cut=21, end_cut=21)
+
+# Visualize per-volume phase with cut regions
+fig, ax = gp.plot_volume_phase(phases, tr=1.856, cut_start=21, cut_end=21)
 ```
 
 ## Documentation
@@ -131,17 +166,17 @@ Full API reference and tutorials at
 
 GastroPy is under active development. Current status:
 
-- [x] `gastropy.signal` — core DSP (PSD, filtering, phase, resampling)
+- [x] `gastropy.signal` — core DSP, phase-based artifact detection
 - [x] `gastropy.metrics` — band power, instability coefficient, quality control
 - [x] `gastropy.egg` — high-level pipeline, channel selection
 - [x] `gastropy.neuro.fmri` — scanner triggers, volume windowing
 - [x] `gastropy.timefreq` — per-band decomposition and cycle analysis
+- [x] `gastropy.data` — bundled sample datasets
+- [x] `gastropy.viz` — publication-ready plotting (6 functions)
 - [ ] `gastropy.coupling` — gastric-brain phase coupling
-- [ ] `gastropy.viz` — publication-ready plotting
 - [ ] `gastropy.io` — data I/O, BIDS support
 - [ ] `gastropy.neuro.eeg` / `gastropy.neuro.meg` — EEG/MEG utilities
 - [ ] `gastropy.stats` — statistical testing
-- [ ] `gastropy.data` — sample datasets
 
 ## Contributing
 
