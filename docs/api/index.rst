@@ -41,6 +41,8 @@ Low-level signal processing building blocks.
    cycle_durations
    mean_phase_per_window
    resample_signal
+   detect_phase_artifacts
+   find_cycle_edges
 
 Metrics --- Rhythm Quantification
 ---------------------------------
@@ -88,6 +90,24 @@ Load bundled example EGG recordings for tutorials and testing.
    load_fmri_egg
    load_egg
    list_datasets
+
+Viz --- Visualization
+---------------------
+
+Plotting functions for EGG signals and gastric rhythm analysis.
+
+.. currentmodule:: gastropy
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   plot_psd
+   plot_egg_overview
+   plot_cycle_histogram
+   plot_artifacts
+   plot_volume_phase
+   plot_egg_comprehensive
 
 Neuro --- Neuroimaging Utilities
 --------------------------------
