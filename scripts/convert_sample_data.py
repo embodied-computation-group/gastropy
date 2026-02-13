@@ -50,9 +50,7 @@ def convert_fif_session(session_id: str) -> None:
     duration_s = raw.times[-1]
 
     # Extract R128 trigger times
-    trigger_times = np.array(
-        [ann["onset"] for ann in raw.annotations if "R128" in ann["description"]]
-    )
+    trigger_times = np.array([ann["onset"] for ann in raw.annotations if "R128" in ann["description"]])
 
     # Downsample
     n_target = int(len(raw.times) * TARGET_SFREQ / orig_sfreq)

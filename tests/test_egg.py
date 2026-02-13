@@ -2,14 +2,13 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from gastropy.egg import egg_clean, egg_process, select_best_channel, select_peak_frequency
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_egg_signal(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.1):
     """Create a synthetic EGG signal (3 cpm by default)."""
@@ -22,6 +21,7 @@ def _make_egg_signal(freq_hz=0.05, sfreq=10.0, duration=300.0, noise=0.1):
 # ---------------------------------------------------------------------------
 # select_best_channel
 # ---------------------------------------------------------------------------
+
 
 class TestSelectBestChannel:
     def test_finds_channel_with_gastric_peak(self):
@@ -54,6 +54,7 @@ class TestSelectBestChannel:
 # select_peak_frequency
 # ---------------------------------------------------------------------------
 
+
 class TestSelectPeakFrequency:
     def test_finds_known_frequency(self):
         """Should find the peak at the signal frequency."""
@@ -65,6 +66,7 @@ class TestSelectPeakFrequency:
 # ---------------------------------------------------------------------------
 # egg_clean
 # ---------------------------------------------------------------------------
+
 
 class TestEggClean:
     def test_output_same_length(self):
@@ -83,6 +85,7 @@ class TestEggClean:
 # ---------------------------------------------------------------------------
 # egg_process
 # ---------------------------------------------------------------------------
+
 
 class TestEggProcess:
     def test_returns_dataframe_and_dict(self):

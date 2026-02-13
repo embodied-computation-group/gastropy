@@ -8,7 +8,6 @@ from gastropy.metrics import (
     GASTRIC_BANDS,
     NORMOGASTRIA,
     TACHYGASTRIA,
-    GastricBand,
     assess_quality,
     band_power,
     cycle_stats,
@@ -16,10 +15,10 @@ from gastropy.metrics import (
     proportion_normogastric,
 )
 
-
 # ---------------------------------------------------------------------------
 # Band definitions
 # ---------------------------------------------------------------------------
+
 
 class TestBandDefinitions:
     def test_normogastria_range(self):
@@ -55,6 +54,7 @@ class TestBandDefinitions:
 # band_power
 # ---------------------------------------------------------------------------
 
+
 class TestBandPower:
     def test_detects_peak_in_band(self):
         """band_power should find the peak frequency in the band."""
@@ -86,6 +86,7 @@ class TestBandPower:
 # instability_coefficient
 # ---------------------------------------------------------------------------
 
+
 class TestInstabilityCoefficient:
     def test_stable_rhythm(self):
         """Very consistent cycle durations should give low IC."""
@@ -115,6 +116,7 @@ class TestInstabilityCoefficient:
 # cycle_stats
 # ---------------------------------------------------------------------------
 
+
 class TestCycleStats:
     def test_basic_stats(self):
         """Should compute correct mean and SD."""
@@ -143,6 +145,7 @@ class TestCycleStats:
 # proportion_normogastric
 # ---------------------------------------------------------------------------
 
+
 class TestProportionNormogastric:
     def test_all_normogastric(self):
         """All cycles in range should give 1.0."""
@@ -164,6 +167,7 @@ class TestProportionNormogastric:
 # ---------------------------------------------------------------------------
 # assess_quality
 # ---------------------------------------------------------------------------
+
 
 class TestAssessQuality:
     def test_good_quality(self):
