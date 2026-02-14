@@ -247,20 +247,49 @@ fMRIPrep-to-PLV-map workflow.
    plv_map = compute_plv_map(egg_phase, bold_phases)
    surr_map = compute_surrogate_plv_map(egg_phase, bold_phases, n_surrogates=200)
 
-**Downloading Sample fMRI Data**
+**Loading and Processing Real fMRI Data**
 
 .. code-block:: python
 
+   from gastropy.neuro.fmri import load_bold, align_bold_to_egg
+
    # Download preprocessed BOLD from GitHub Release (requires pooch)
    data = gp.fetch_fmri_bold(session="0001")
-   print(data["bold"])  # path to cached NIfTI file
+
+   # Load NIfTI and brain mask
+   bold_data = load_bold(data["bold"], data["mask"])
+   print(bold_data["bold_2d"].shape)  # (n_voxels, n_volumes)
+
+   # Align BOLD to EGG trigger count
+   egg = gp.load_fmri_egg(session="0001")
+   bold_2d, confounds = align_bold_to_egg(
+       bold_data["bold_2d"], len(egg["trigger_times"]), confounds_df
+   )
+
+**Visualizing Coupling Maps**
+
+.. code-block:: python
+
+   from gastropy.neuro.fmri import to_nifti
+
+   # Reconstruct 3D PLV volume
+   plv_3d = compute_plv_map(egg_phase, bold_phases,
+                            vol_shape=bold_data["vol_shape"],
+                            mask_indices=bold_data["mask"])
+
+   # Visualize with nilearn
+   plv_img = to_nifti(plv_3d, bold_data["affine"])
+   gp.plot_coupling_map(plv_img, threshold=0.04)
+   gp.plot_glass_brain(plv_img, threshold=0.04)
 
 What's Next
 -----------
 
-For hands-on walkthroughs using real data, see the
-:doc:`EGG Signal Processing Tutorial <tutorials/egg_processing>` and
-the :doc:`Gastric-Brain Coupling Tutorial <tutorials/gastric_brain_coupling>`.
+For hands-on walkthroughs, see the tutorials:
+
+- :doc:`EGG Signal Processing <tutorials/egg_processing>` — standalone EGG analysis
+- :doc:`Gastric-Brain Coupling (Concepts) <tutorials/gastric_brain_coupling>` — pipeline overview with synthetic BOLD
+- :doc:`Real fMRI Coupling Pipeline <tutorials/fmri_coupling_real>` — end-to-end with real fMRIPrep data
 
 See the :doc:`API Reference <api/index>` for the full list of available
 functions.

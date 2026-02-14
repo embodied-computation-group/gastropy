@@ -7,6 +7,7 @@ voxelwise phase extraction, and PLV map computation.
 """
 
 import numpy as np
+from scipy import signal as sp_signal
 
 from ..coupling.plv import phase_locking_value
 from ..coupling.surrogate import surrogate_plv as _surrogate_plv
@@ -235,13 +236,20 @@ def regress_confounds(bold_2d, confounds_df, confound_cols=None):
     return residuals.T  # back to (n_voxels, n_timepoints)
 
 
-def bold_voxelwise_phases(bold_2d, peak_freq_hz, sfreq, hwhm_hz=0.015, begin_cut=0, end_cut=0):
+def bold_voxelwise_phases(
+    bold_2d, peak_freq_hz, sfreq, hwhm_hz=0.015, begin_cut=0, end_cut=0, filter_method="iir", filter_order=4
+):
     """Extract instantaneous phase at the gastric frequency for each voxel.
 
     Bandpass-filters each voxel's BOLD time series at the individual
     gastric peak frequency, then applies the Hilbert transform to
     extract the instantaneous phase. Optionally trims edge volumes
     to remove filter ringing artifacts.
+
+    The default IIR (Butterworth) filter is used because FIR filters
+    require many more taps than available BOLD volumes at typical
+    fMRI sampling rates (~0.5 Hz). IIR filtering is vectorized across
+    all voxels for performance.
 
     Parameters
     ----------
@@ -258,6 +266,13 @@ def bold_voxelwise_phases(bold_2d, peak_freq_hz, sfreq, hwhm_hz=0.015, begin_cut
         Number of timepoints to remove from the start. Default is 0.
     end_cut : int, optional
         Number of timepoints to remove from the end. Default is 0.
+    filter_method : str, optional
+        ``"iir"`` (default) for Butterworth, ``"fir"`` for FIR.
+        IIR is recommended for BOLD data where the number of volumes
+        is typically too short for high-order FIR filters.
+    filter_order : int, optional
+        Butterworth filter order when ``filter_method="iir"``.
+        Default is 4.
 
     Returns
     -------
@@ -268,16 +283,28 @@ def bold_voxelwise_phases(bold_2d, peak_freq_hz, sfreq, hwhm_hz=0.015, begin_cut
     if bold_2d.ndim != 2:
         raise ValueError(f"bold_2d must be 2D (n_voxels, n_timepoints), got {bold_2d.ndim}D")
 
+    n_voxels, n_time = bold_2d.shape
+
+    # Early exit if cuts would consume all timepoints
+    if begin_cut + end_cut >= n_time:
+        return np.empty((n_voxels, 0), dtype=float)
+
     low_hz = max(peak_freq_hz - hwhm_hz, 1e-6)
     high_hz = peak_freq_hz + hwhm_hz
 
-    n_voxels, n_time = bold_2d.shape
-    phases = np.empty_like(bold_2d)
-
-    for i in range(n_voxels):
-        filtered, _ = apply_bandpass(bold_2d[i], sfreq, low_hz, high_hz)
-        phase, _ = instantaneous_phase(filtered)
-        phases[i] = phase
+    if filter_method == "iir":
+        # Vectorized IIR path: filter + Hilbert on all voxels at once
+        sos = sp_signal.butter(filter_order, [low_hz, high_hz], btype="band", fs=sfreq, output="sos")
+        filtered = sp_signal.sosfiltfilt(sos, bold_2d, axis=1)
+        analytic = sp_signal.hilbert(filtered, axis=1)
+        phases = np.angle(analytic)
+    else:
+        # Per-voxel FIR path (original)
+        phases = np.empty_like(bold_2d)
+        for i in range(n_voxels):
+            filt_i, _ = apply_bandpass(bold_2d[i], sfreq, low_hz, high_hz, method="fir")
+            phase_i, _ = instantaneous_phase(filt_i)
+            phases[i] = phase_i
 
     # Apply edge trimming
     if begin_cut > 0 or end_cut > 0:
@@ -381,6 +408,122 @@ def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indic
     return surr
 
 
+def load_bold(bold_path, mask_path):
+    """Load fMRIPrep BOLD and brain mask as a masked 2D array.
+
+    Convenience wrapper around nibabel that loads a preprocessed
+    BOLD NIfTI and brain mask, applies the mask, and returns the
+    data ready for confound regression and phase extraction.
+
+    Parameters
+    ----------
+    bold_path : str or Path
+        Path to the preprocessed BOLD NIfTI file
+        (e.g., ``*_desc-preproc_bold.nii.gz``).
+    mask_path : str or Path
+        Path to the brain mask NIfTI file
+        (e.g., ``*_desc-brain_mask.nii.gz``).
+
+    Returns
+    -------
+    result : dict
+        Dictionary with keys:
+
+        - ``bold_2d`` : np.ndarray, shape (n_voxels, n_volumes)
+        - ``mask`` : np.ndarray, boolean 3D array
+        - ``affine`` : np.ndarray, 4x4 affine matrix
+        - ``vol_shape`` : tuple, spatial dimensions (x, y, z)
+        - ``n_volumes`` : int
+    """
+    try:
+        import nibabel as nib
+    except ImportError as e:
+        raise ImportError("nibabel is required: pip install gastropy[neuro]") from e
+
+    bold_img = nib.load(bold_path)
+    mask_img = nib.load(mask_path)
+
+    bold_data = bold_img.get_fdata(dtype=np.float32)
+    mask = mask_img.get_fdata().astype(bool)
+
+    vol_shape = mask.shape
+    n_volumes = bold_data.shape[-1]
+
+    # Apply mask: (x, y, z, t) -> (n_voxels, t)
+    bold_2d = bold_data[mask]
+
+    return {
+        "bold_2d": bold_2d,
+        "mask": mask,
+        "affine": bold_img.affine,
+        "vol_shape": vol_shape,
+        "n_volumes": n_volumes,
+    }
+
+
+def align_bold_to_egg(bold_2d, n_triggers, confounds_df=None):
+    """Align BOLD volumes to EGG trigger count.
+
+    fMRIPrep BOLD may contain more volumes than EGG triggers
+    (e.g., pre- or post-trigger dummy scans). This function
+    truncates BOLD to the first ``n_triggers`` volumes.
+
+    Parameters
+    ----------
+    bold_2d : np.ndarray, shape (n_voxels, n_volumes)
+        BOLD time series.
+    n_triggers : int
+        Number of EGG scanner triggers (= expected volume count).
+    confounds_df : pandas.DataFrame, optional
+        If provided, also truncates to first ``n_triggers`` rows.
+
+    Returns
+    -------
+    bold_aligned : np.ndarray, shape (n_voxels, n_triggers)
+        Truncated BOLD time series.
+    confounds_aligned : pandas.DataFrame or None
+        Truncated confounds (if input was provided).
+    """
+    n_volumes = bold_2d.shape[1]
+
+    if n_volumes < n_triggers:
+        raise ValueError(
+            f"BOLD has {n_volumes} volumes but EGG has {n_triggers} "
+            f"triggers. BOLD must have at least as many volumes as triggers."
+        )
+
+    bold_aligned = bold_2d[:, :n_triggers]
+
+    confounds_aligned = None
+    if confounds_df is not None:
+        confounds_aligned = confounds_df.iloc[:n_triggers].reset_index(drop=True)
+
+    return bold_aligned, confounds_aligned
+
+
+def to_nifti(data_3d, affine):
+    """Convert a 3D numpy array to a nibabel NIfTI image.
+
+    Parameters
+    ----------
+    data_3d : np.ndarray
+        3D volume data.
+    affine : np.ndarray
+        4x4 affine transformation matrix.
+
+    Returns
+    -------
+    img : nibabel.Nifti1Image
+        NIfTI image object (can be saved or passed to nilearn).
+    """
+    try:
+        import nibabel as nib
+    except ImportError as e:
+        raise ImportError("nibabel is required: pip install gastropy[neuro]") from e
+
+    return nib.Nifti1Image(np.asarray(data_3d, dtype=np.float32), affine)
+
+
 __all__ = [
     "find_scanner_triggers",
     "create_volume_windows",
@@ -390,4 +533,7 @@ __all__ = [
     "bold_voxelwise_phases",
     "compute_plv_map",
     "compute_surrogate_plv_map",
+    "load_bold",
+    "align_bold_to_egg",
+    "to_nifti",
 ]

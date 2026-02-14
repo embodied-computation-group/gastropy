@@ -128,6 +128,8 @@ Plotting functions for EGG signals and gastric rhythm analysis.
    plot_artifacts
    plot_volume_phase
    plot_egg_comprehensive
+   plot_coupling_map
+   plot_glass_brain
 
 Neuro --- Neuroimaging Utilities
 --------------------------------
@@ -149,3 +151,6 @@ Access via ``gastropy.neuro.fmri``.
    bold_voxelwise_phases
    compute_plv_map
    compute_surrogate_plv_map
+   load_bold
+   align_bold_to_egg
+   to_nifti

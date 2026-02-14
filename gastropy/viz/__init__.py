@@ -36,4 +36,13 @@ __all__ = [
     "plot_artifacts",
     "plot_volume_phase",
     "plot_egg_comprehensive",
+    "plot_coupling_map",
+    "plot_glass_brain",
 ]
+
+# Brain visualization requires nilearn (optional dependency).
+# Import lazily so core gastropy works without it.
+import contextlib
+
+with contextlib.suppress(ImportError):
+    from .brain import plot_coupling_map, plot_glass_brain
