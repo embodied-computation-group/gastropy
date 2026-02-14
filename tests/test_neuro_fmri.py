@@ -1,5 +1,7 @@
 """Tests for gastropy.neuro.fmri module."""
 
+import importlib
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -17,6 +19,8 @@ from gastropy.neuro.fmri import (
     regress_confounds,
     to_nifti,
 )
+
+HAS_NIBABEL = importlib.util.find_spec("nibabel") is not None
 
 # ---------------------------------------------------------------------------
 # Mock MNE Annotations (no real MNE dependency needed for testing)
@@ -460,6 +464,7 @@ class TestBoldVoxelwisePhasesIIR:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not HAS_NIBABEL, reason="nibabel not installed")
 class TestLoadBold:
     def test_load_synthetic_nifti(self, tmp_path):
         """Should load BOLD and mask from NIfTI files."""
@@ -556,6 +561,7 @@ class TestAlignBoldToEgg:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not HAS_NIBABEL, reason="nibabel not installed")
 class TestToNifti:
     def test_roundtrip(self):
         """to_nifti should produce a valid NIfTI image."""
