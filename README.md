@@ -34,12 +34,13 @@ and MEG.
 | **`gastropy.metrics`** | Gastric frequency bands, band power, instability coefficient, cycle statistics, quality assessment |
 | **`gastropy.egg`** | High-level pipeline (`egg_process`), channel selection (`find_peaks`), peak frequency detection |
 | **`gastropy.timefreq`** | Per-band narrowband decomposition, cycle analysis across brady/normo/tachy bands |
-| **`gastropy.viz`** | PSD plots, EGG overview panels, cycle histograms, artifact displays, fMRI volume phase |
-| **`gastropy.data`** | Bundled sample datasets (fMRI-EGG and standalone EGG recordings) |
-| **`gastropy.neuro.fmri`** | Scanner trigger parsing, volume windowing, per-volume phase, transient removal |
+| **`gastropy.coupling`** | Phase-locking value (PLV), complex PLV, surrogate testing, circular statistics (Rayleigh test, resultant length) |
+| **`gastropy.viz`** | PSD plots, EGG overview panels, cycle histograms, artifact displays, fMRI volume phase, brain coupling maps |
+| **`gastropy.data`** | Bundled sample datasets (fMRI-EGG and standalone EGG), downloadable fMRI BOLD via `fetch_fmri_bold` |
+| **`gastropy.neuro.fmri`** | Scanner triggers, volume windowing, confound regression, voxelwise BOLD phase extraction, PLV map computation, NIfTI I/O |
 
-> **Planned:** gastric-brain phase coupling, data I/O with BIDS support,
-> EEG/MEG utilities, and statistical testing. See the [Roadmap](#roadmap) below.
+> **Planned:** data I/O with BIDS support, EEG/MEG utilities, and statistical
+> testing. See the [Roadmap](#roadmap) below.
 
 ## Installation
 
@@ -157,19 +158,50 @@ phases = apply_volume_cuts(phases, begin_cut=21, end_cut=21)
 fig, ax = gp.plot_volume_phase(phases, tr=1.856, cut_start=21, cut_end=21)
 ```
 
+### Gastric-brain coupling
+
+```python
+import gastropy as gp
+from gastropy.neuro.fmri import (
+    load_bold, align_bold_to_egg, regress_confounds,
+    bold_voxelwise_phases, compute_plv_map, to_nifti,
+)
+
+# Load preprocessed fMRI data (requires pip install gastropy[neuro])
+bold = load_bold("bold_preproc.nii.gz", "brain_mask.nii.gz")
+egg = gp.load_fmri_egg(session="0001")
+
+# Align BOLD volumes to EGG triggers, regress confounds
+bold_2d, confounds = align_bold_to_egg(bold["bold_2d"], len(egg["trigger_times"]), confounds_df)
+residuals = regress_confounds(bold_2d, confounds)
+
+# Extract BOLD phase at individual gastric frequency
+bold_phases = bold_voxelwise_phases(residuals, peak_freq_hz=0.05, sfreq=1/1.856)
+
+# Compute voxelwise PLV map
+plv_map = compute_plv_map(egg_phase, bold_phases, vol_shape=bold["vol_shape"], mask_indices=bold["mask"])
+
+# Visualize on brain
+plv_img = to_nifti(plv_map, bold["affine"])
+gp.plot_coupling_map(plv_img, threshold=0.03)
+gp.plot_glass_brain(plv_img, threshold=0.03)
+```
+
 ## Tutorials & Examples
 
-Learn EGG processing from scratch with our step-by-step tutorial using real
-data from Wolpert et al. (2020):
+Step-by-step tutorials covering the full pipeline:
 
-- **[EGG Signal Processing Tutorial](https://embodied-computation-group.github.io/gastropy/tutorials/egg_processing.html)** —
-  Full walkthrough from raw data to publication-ready metrics. No prior EGG
-  experience needed.
+- **[EGG Signal Processing](https://embodied-computation-group.github.io/gastropy/tutorials/egg_processing.html)** —
+  From raw data to publication-ready metrics using Wolpert et al. (2020) data.
+- **[Gastric-Brain Coupling (Concepts)](https://embodied-computation-group.github.io/gastropy/tutorials/gastric_brain_coupling.html)** —
+  PLV pipeline overview with synthetic BOLD data.
+- **[Real fMRI Coupling Pipeline](https://embodied-computation-group.github.io/gastropy/tutorials/fmri_coupling_real.html)** —
+  End-to-end volumetric PLV map from fMRIPrep data with brain visualization.
 
 Browse the **[Examples Gallery](https://embodied-computation-group.github.io/gastropy/examples/index.html)** for
-short, focused examples of individual functions: PSD plots, signal overviews,
-cycle histograms, artifact detection, channel selection, multi-band analysis,
-fMRI-EGG pipelines, and more.
+short, focused examples: PSD plots, signal overviews, cycle histograms,
+artifact detection, channel selection, multi-band analysis, PLV computation,
+surrogate testing, circular statistics, and brain map visualization.
 
 ## Documentation
 
@@ -183,11 +215,11 @@ GastroPy is under active development. Current status:
 - [x] `gastropy.signal` — core DSP, phase-based artifact detection
 - [x] `gastropy.metrics` — band power, instability coefficient, quality control
 - [x] `gastropy.egg` — high-level pipeline, channel selection
-- [x] `gastropy.neuro.fmri` — scanner triggers, volume windowing
 - [x] `gastropy.timefreq` — per-band decomposition and cycle analysis
-- [x] `gastropy.data` — bundled sample datasets
-- [x] `gastropy.viz` — publication-ready plotting (6 functions)
-- [ ] `gastropy.coupling` — gastric-brain phase coupling
+- [x] `gastropy.coupling` — PLV, complex PLV, surrogate testing, circular statistics
+- [x] `gastropy.neuro.fmri` — triggers, confound regression, BOLD phase extraction, PLV maps, NIfTI I/O
+- [x] `gastropy.data` — bundled sample datasets + downloadable fMRI BOLD
+- [x] `gastropy.viz` — publication-ready plotting (8 functions including brain maps)
 - [ ] `gastropy.io` — data I/O, BIDS support
 - [ ] `gastropy.neuro.eeg` / `gastropy.neuro.meg` — EEG/MEG utilities
 - [ ] `gastropy.stats` — statistical testing
