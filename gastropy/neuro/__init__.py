@@ -15,11 +15,24 @@ eeg  — EEG preprocessing and utilities
 meg  — MEG preprocessing and utilities
 """
 
-from .fmri import apply_volume_cuts, create_volume_windows, find_scanner_triggers, phase_per_volume
+from .fmri import (
+    apply_volume_cuts,
+    bold_voxelwise_phases,
+    compute_plv_map,
+    compute_surrogate_plv_map,
+    create_volume_windows,
+    find_scanner_triggers,
+    phase_per_volume,
+    regress_confounds,
+)
 
 __all__ = [
     "find_scanner_triggers",
     "create_volume_windows",
     "phase_per_volume",
     "apply_volume_cuts",
+    "regress_confounds",
+    "bold_voxelwise_phases",
+    "compute_plv_map",
+    "compute_surrogate_plv_map",
 ]

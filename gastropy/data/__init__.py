@@ -12,13 +12,15 @@ load_egg
     Load sample standalone EGG recording (7-channel, no fMRI).
 list_datasets
     List available sample datasets.
+fetch_fmri_bold
+    Download preprocessed fMRI BOLD data for coupling analysis.
 """
 
 from pathlib import Path
 
 import numpy as np
 
-__all__ = ["load_fmri_egg", "load_egg", "list_datasets"]
+__all__ = ["load_fmri_egg", "load_egg", "list_datasets", "fetch_fmri_bold"]
 
 _DATA_DIR = Path(__file__).parent
 
@@ -149,3 +151,105 @@ def list_datasets():
     datasets = [f"fmri_egg_session_{s}" for s in _FMRI_SESSIONS]
     datasets.append("egg_standalone")
     return datasets
+
+
+# ---------------------------------------------------------------------------
+# Remote fMRI data (downloaded on demand)
+# ---------------------------------------------------------------------------
+
+# Base URL for GitHub Releases (to be updated when data is uploaded)
+_FMRI_BOLD_BASE_URL = "https://github.com/embodied-computation-group/gastropy/releases/download/sample-data-v1"
+
+# Registry of files with SHA256 hashes (to be populated after upload)
+_FMRI_BOLD_REGISTRY = {
+    "0001": {
+        "bold": "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
+        "mask": "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz",
+        "confounds": "sub-01_ses-20240815_task-rest_run-01_desc-confounds_timeseries.tsv",
+    },
+}
+
+
+def fetch_fmri_bold(session="0001", data_dir=None):
+    """Download preprocessed fMRI BOLD data for coupling analysis.
+
+    Downloads a preprocessed BOLD NIfTI file, brain mask, and
+    fMRIPrep confounds table from a GitHub Release. Files are
+    cached locally after the first download.
+
+    Requires the ``pooch`` package (included in the ``neuro``
+    optional dependency group).
+
+    Parameters
+    ----------
+    session : str
+        Session identifier. Available: ``"0001"``.
+    data_dir : str or Path, optional
+        Directory to store downloaded files. Default uses
+        ``pooch``'s OS-appropriate cache directory.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys:
+
+        - ``bold`` : Path — path to preprocessed BOLD NIfTI
+        - ``mask`` : Path — path to brain mask NIfTI
+        - ``confounds`` : Path — path to confounds TSV
+        - ``session`` : str — session identifier
+        - ``tr`` : float — repetition time (1.856 s)
+
+    Raises
+    ------
+    ImportError
+        If ``pooch`` is not installed.
+    ValueError
+        If the session identifier is not recognized.
+
+    Notes
+    -----
+    The BOLD files are large (~1.2-1.4 GB). The first download may
+    take several minutes depending on your connection speed.
+
+    The data comes from the semi_precision study, preprocessed with
+    fMRIPrep v25.1.4 in MNI152NLin2009cAsym space.
+
+    Examples
+    --------
+    >>> import gastropy as gp  # doctest: +SKIP
+    >>> data = gp.fetch_fmri_bold()  # doctest: +SKIP
+    >>> data["bold"]  # doctest: +SKIP
+    PosixPath('/home/user/.cache/gastropy/sub-01_ses-..._bold.nii.gz')
+    """
+    try:
+        import pooch
+    except ImportError as err:
+        raise ImportError(
+            "The 'pooch' package is required for downloading fMRI data. Install it with: pip install gastropy[neuro]"
+        ) from err
+
+    session = str(session)
+    if session not in _FMRI_BOLD_REGISTRY:
+        available = ", ".join(repr(s) for s in _FMRI_BOLD_REGISTRY)
+        raise ValueError(f"Unknown session {session!r}. Available: {available}")
+
+    files = _FMRI_BOLD_REGISTRY[session]
+
+    if data_dir is not None:
+        data_dir = Path(data_dir)
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+    fetcher = pooch.create(
+        path=str(data_dir) if data_dir else pooch.os_cache("gastropy"),
+        base_url=_FMRI_BOLD_BASE_URL + "/",
+        registry={fname: None for fname in files.values()},
+    )
+
+    paths = {}
+    for key, fname in files.items():
+        paths[key] = Path(fetcher.fetch(fname))
+
+    paths["session"] = session
+    paths["tr"] = 1.856
+
+    return paths

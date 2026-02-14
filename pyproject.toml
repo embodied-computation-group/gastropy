@@ -46,6 +46,7 @@ neuro = [
     "mne>=1.5",
     "nilearn>=0.10",
     "nibabel>=5.0",
+    "pooch>=1.6",
 ]
 dev = [
     "pytest>=7.0",

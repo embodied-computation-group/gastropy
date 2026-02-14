@@ -28,6 +28,7 @@ misc       — Miscellaneous utilities
 __version__ = "0.1.0"
 
 # Flat namespace re-exports for implemented modules
+from .coupling import *  # noqa: F401, F403
 from .data import *  # noqa: F401, F403
 from .egg import *  # noqa: F401, F403
 from .metrics import *  # noqa: F401, F403
@@ -40,7 +41,6 @@ from .viz import *  # noqa: F401, F403
 # from .neuro import *
 
 # Modules not yet implemented — uncomment as they gain content
-# from .coupling import *
 # from .io import *
 # from .stats import *
 # from .misc import *
