@@ -9,3 +9,4 @@ processing and analysis.
 
    egg_processing
    gastric_brain_coupling
+   fmri_coupling_real

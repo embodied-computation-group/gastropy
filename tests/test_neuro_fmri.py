@@ -5,14 +5,17 @@ import pandas as pd
 import pytest
 
 from gastropy.neuro.fmri import (
+    align_bold_to_egg,
     apply_volume_cuts,
     bold_voxelwise_phases,
     compute_plv_map,
     compute_surrogate_plv_map,
     create_volume_windows,
     find_scanner_triggers,
+    load_bold,
     phase_per_volume,
     regress_confounds,
+    to_nifti,
 )
 
 # ---------------------------------------------------------------------------
@@ -390,3 +393,188 @@ class TestComputeSurrogatePlvMap:
         empirical = compute_plv_map(egg_phase, bold_phases)
         surr = compute_surrogate_plv_map(egg_phase, bold_phases, n_surrogates=50, seed=42)
         assert all(surr < empirical)
+
+
+# ---------------------------------------------------------------------------
+# bold_voxelwise_phases — IIR filter path
+# ---------------------------------------------------------------------------
+
+
+class TestBoldVoxelwisePhasesIIR:
+    def test_iir_is_default(self):
+        """IIR should be the default filter method."""
+        rng = np.random.default_rng(42)
+        bold = rng.standard_normal((3, 200))
+        # Should work without specifying filter_method (default is "iir")
+        phases = bold_voxelwise_phases(bold, peak_freq_hz=0.05, sfreq=0.5)
+        assert phases.shape == (3, 200)
+
+    def test_iir_short_signal(self):
+        """IIR should work with short BOLD (where FIR would fail)."""
+        rng = np.random.default_rng(42)
+        # 50 volumes — too short for FIR but fine for IIR
+        bold = rng.standard_normal((5, 50))
+        phases = bold_voxelwise_phases(bold, peak_freq_hz=0.05, sfreq=0.5, filter_method="iir")
+        assert phases.shape == (5, 50)
+        assert phases.min() >= -np.pi - 1e-10
+        assert phases.max() <= np.pi + 1e-10
+
+    def test_iir_matches_fir_on_long_signal(self):
+        """IIR and FIR should produce similar phase on a long sinusoid."""
+        sfreq = 0.5
+        n_time = 1200  # Long enough for FIR
+        t = np.arange(n_time) / sfreq
+        freq = 0.05
+        bold = np.sin(2 * np.pi * freq * t)[np.newaxis, :]
+
+        phases_iir = bold_voxelwise_phases(bold, peak_freq_hz=freq, sfreq=sfreq, filter_method="iir")
+        phases_fir = bold_voxelwise_phases(bold, peak_freq_hz=freq, sfreq=sfreq, filter_method="fir")
+
+        # Both should produce valid phase; compare center region (avoid edges)
+        center = slice(200, -200)
+        iir_unwrapped = np.unwrap(phases_iir[0, center])
+        fir_unwrapped = np.unwrap(phases_fir[0, center])
+        # Both should be monotonically increasing for a pure sinusoid
+        assert np.all(np.diff(iir_unwrapped) > 0)
+        assert np.all(np.diff(fir_unwrapped) > 0)
+
+    def test_iir_with_cuts(self):
+        """IIR path with edge cuts should produce correct shape."""
+        rng = np.random.default_rng(42)
+        bold = rng.standard_normal((3, 100))
+        phases = bold_voxelwise_phases(
+            bold, peak_freq_hz=0.05, sfreq=0.5, filter_method="iir", begin_cut=10, end_cut=10
+        )
+        assert phases.shape == (3, 80)
+
+    def test_iir_custom_order(self):
+        """Should accept custom filter order."""
+        rng = np.random.default_rng(42)
+        bold = rng.standard_normal((3, 200))
+        phases = bold_voxelwise_phases(bold, peak_freq_hz=0.05, sfreq=0.5, filter_method="iir", filter_order=2)
+        assert phases.shape == (3, 200)
+
+
+# ---------------------------------------------------------------------------
+# load_bold
+# ---------------------------------------------------------------------------
+
+
+class TestLoadBold:
+    def test_load_synthetic_nifti(self, tmp_path):
+        """Should load BOLD and mask from NIfTI files."""
+        import nibabel as nib
+
+        vol_shape = (10, 12, 8)
+        n_volumes = 50
+        affine = np.eye(4)
+
+        # Create synthetic BOLD and mask
+        bold_data = np.random.default_rng(42).standard_normal((*vol_shape, n_volumes)).astype(np.float32)
+        mask_data = np.zeros(vol_shape, dtype=np.uint8)
+        mask_data[2:8, 3:9, 1:7] = 1
+        n_voxels = mask_data.sum()
+
+        bold_path = tmp_path / "bold.nii.gz"
+        mask_path = tmp_path / "mask.nii.gz"
+        nib.save(nib.Nifti1Image(bold_data, affine), bold_path)
+        nib.save(nib.Nifti1Image(mask_data, affine), mask_path)
+
+        result = load_bold(str(bold_path), str(mask_path))
+
+        assert result["bold_2d"].shape == (n_voxels, n_volumes)
+        assert result["mask"].shape == vol_shape
+        assert result["mask"].dtype == bool
+        assert result["affine"].shape == (4, 4)
+        assert result["vol_shape"] == vol_shape
+        assert result["n_volumes"] == n_volumes
+
+    def test_mask_applied_correctly(self, tmp_path):
+        """Masked values should match expected voxels."""
+        import nibabel as nib
+
+        vol_shape = (3, 3, 3)
+        n_volumes = 10
+        affine = np.eye(4)
+
+        bold_data = np.arange(np.prod(vol_shape) * n_volumes, dtype=np.float32).reshape(*vol_shape, n_volumes)
+        mask_data = np.zeros(vol_shape, dtype=np.uint8)
+        mask_data[0, 0, 0] = 1
+        mask_data[1, 1, 1] = 1
+
+        bold_path = tmp_path / "bold.nii.gz"
+        mask_path = tmp_path / "mask.nii.gz"
+        nib.save(nib.Nifti1Image(bold_data, affine), bold_path)
+        nib.save(nib.Nifti1Image(mask_data, affine), mask_path)
+
+        result = load_bold(str(bold_path), str(mask_path))
+        assert result["bold_2d"].shape[0] == 2
+        # First row should be voxel (0,0,0), second should be (1,1,1)
+        np.testing.assert_allclose(result["bold_2d"][0], bold_data[0, 0, 0, :])
+        np.testing.assert_allclose(result["bold_2d"][1], bold_data[1, 1, 1, :])
+
+
+# ---------------------------------------------------------------------------
+# align_bold_to_egg
+# ---------------------------------------------------------------------------
+
+
+class TestAlignBoldToEgg:
+    def test_truncation(self):
+        """Should truncate BOLD to n_triggers volumes."""
+        bold = np.zeros((10, 500))
+        aligned, conf = align_bold_to_egg(bold, n_triggers=420)
+        assert aligned.shape == (10, 420)
+        assert conf is None
+
+    def test_with_confounds(self):
+        """Should also truncate confounds DataFrame."""
+        bold = np.zeros((10, 500))
+        confounds = pd.DataFrame({"col": np.arange(500)})
+        aligned, conf = align_bold_to_egg(bold, n_triggers=420, confounds_df=confounds)
+        assert aligned.shape == (10, 420)
+        assert len(conf) == 420
+        assert conf["col"].iloc[0] == 0
+        assert conf["col"].iloc[-1] == 419
+
+    def test_exact_match(self):
+        """Should pass through unchanged if volumes == triggers."""
+        bold = np.ones((5, 100))
+        aligned, conf = align_bold_to_egg(bold, n_triggers=100)
+        assert aligned.shape == (5, 100)
+        np.testing.assert_array_equal(aligned, bold)
+
+    def test_too_few_volumes_raises(self):
+        """Should raise if BOLD has fewer volumes than triggers."""
+        bold = np.zeros((5, 100))
+        with pytest.raises(ValueError, match="volumes"):
+            align_bold_to_egg(bold, n_triggers=200)
+
+
+# ---------------------------------------------------------------------------
+# to_nifti
+# ---------------------------------------------------------------------------
+
+
+class TestToNifti:
+    def test_roundtrip(self):
+        """to_nifti should produce a valid NIfTI image."""
+        import nibabel as nib
+
+        data = np.random.default_rng(42).standard_normal((10, 12, 8)).astype(np.float32)
+        affine = np.eye(4)
+        img = to_nifti(data, affine)
+
+        assert isinstance(img, nib.Nifti1Image)
+        assert img.shape == (10, 12, 8)
+        np.testing.assert_array_equal(img.affine, affine)
+        np.testing.assert_allclose(img.get_fdata(), data)
+
+    def test_integer_input_converts(self):
+        """Should handle integer input by converting to float32."""
+        data = np.ones((5, 5, 5), dtype=int)
+        affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        img = to_nifti(data, affine)
+        # Data is stored as float32; get_fdata(dtype=np.float32) confirms
+        assert img.get_fdata(dtype=np.float32).dtype == np.float32
+        np.testing.assert_allclose(img.get_fdata(), 1.0)
