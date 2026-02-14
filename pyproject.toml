@@ -79,6 +79,7 @@ artifacts = ["gastropy/data/*.npz"]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+exclude = ["_archive"]
 
 [tool.ruff.lint]
 select = [

@@ -8,3 +8,4 @@ processing and analysis.
    :maxdepth: 2
 
    egg_processing
+   gastric_brain_coupling
