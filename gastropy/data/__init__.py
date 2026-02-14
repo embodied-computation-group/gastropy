@@ -157,15 +157,24 @@ def list_datasets():
 # Remote fMRI data (downloaded on demand)
 # ---------------------------------------------------------------------------
 
-# Base URL for GitHub Releases (to be updated when data is uploaded)
+# Base URL for GitHub Releases
 _FMRI_BOLD_BASE_URL = "https://github.com/embodied-computation-group/gastropy/releases/download/sample-data-v1"
 
-# Registry of files with SHA256 hashes (to be populated after upload)
+# Registry of files with SHA256 hashes: {session: {key: (filename, hash)}}
 _FMRI_BOLD_REGISTRY = {
     "0001": {
-        "bold": "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
-        "mask": "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz",
-        "confounds": "sub-01_ses-20240815_task-rest_run-01_desc-confounds_timeseries.tsv",
+        "bold": (
+            "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
+            "sha256:18949d490dde34af99a00d54d69df041ce7168833cad906f9890a6acf6c41481",
+        ),
+        "mask": (
+            "sub-01_ses-20240815_task-rest_run-01_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz",
+            "sha256:adc6c4e30df05db40e37490cabc0a53d844cb72f86970a6bb1db69069d6277b2",
+        ),
+        "confounds": (
+            "sub-01_ses-20240815_task-rest_run-01_desc-confounds_timeseries.tsv",
+            "sha256:7736cee95003ceb8f55a763be94f8130ab356eddbcaef18a8451954a95de53d7",
+        ),
     },
 }
 
@@ -242,11 +251,11 @@ def fetch_fmri_bold(session="0001", data_dir=None):
     fetcher = pooch.create(
         path=str(data_dir) if data_dir else pooch.os_cache("gastropy"),
         base_url=_FMRI_BOLD_BASE_URL + "/",
-        registry={fname: None for fname in files.values()},
+        registry={fname: sha for fname, sha in files.values()},
     )
 
     paths = {}
-    for key, fname in files.items():
+    for key, (fname, _sha) in files.items():
         paths[key] = Path(fetcher.fetch(fname))
 
     paths["session"] = session
