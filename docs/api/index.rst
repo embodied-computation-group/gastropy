@@ -76,10 +76,29 @@ Decompose signals across gastric frequency bands.
    band_decompose
    multiband_analysis
 
+Coupling --- Phase Coupling Analysis
+-------------------------------------
+
+Phase-locking value (PLV), surrogate testing, and circular statistics
+for gastric-brain coupling analyses.
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   phase_locking_value
+   phase_locking_value_complex
+   surrogate_plv
+   coupling_zscore
+   circular_mean
+   resultant_length
+   rayleigh_test
+
 Data --- Sample Datasets
 ------------------------
 
 Load bundled example EGG recordings for tutorials and testing.
+``fetch_fmri_bold`` downloads preprocessed fMRI data from a GitHub Release.
 
 .. currentmodule:: gastropy
 
@@ -90,6 +109,7 @@ Load bundled example EGG recordings for tutorials and testing.
    load_fmri_egg
    load_egg
    list_datasets
+   fetch_fmri_bold
 
 Viz --- Visualization
 ---------------------
@@ -125,3 +145,7 @@ Access via ``gastropy.neuro.fmri``.
    create_volume_windows
    phase_per_volume
    apply_volume_cuts
+   regress_confounds
+   bold_voxelwise_phases
+   compute_plv_map
+   compute_surrogate_plv_map

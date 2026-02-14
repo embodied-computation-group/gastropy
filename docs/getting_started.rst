@@ -194,13 +194,73 @@ normogastria, tachygastria) for per-band metrics.
        print(f"{band_name}: peak={res['peak_freq_hz']:.3f} Hz, "
              f"IC={res['instability_coefficient']:.3f}")
 
+Gastric-Brain Coupling
+----------------------
+
+GastroPy provides a complete pipeline for phase-locking analysis between
+EGG and BOLD signals. The core coupling metrics work on plain phase arrays,
+while convenience functions in ``gastropy.neuro.fmri`` handle the full
+fMRIPrep-to-PLV-map workflow.
+
+**Phase-Locking Value (PLV)**
+
+.. code-block:: python
+
+   import numpy as np
+   import gastropy as gp
+
+   # PLV between two phase time series
+   plv = gp.phase_locking_value(bold_phases, egg_phase)
+
+   # Complex PLV (magnitude + preferred phase lag)
+   cplv = gp.phase_locking_value_complex(bold_phases, egg_phase)
+   lag_deg = np.rad2deg(np.angle(cplv))
+
+**Surrogate Testing**
+
+.. code-block:: python
+
+   # Null distribution via circular time-shifting
+   surr = gp.surrogate_plv(bold_phases, egg_phase, n_surrogates=200, seed=42)
+
+   # Z-score: empirical vs. surrogate
+   z = gp.coupling_zscore(plv, surr)
+
+**Full fMRI Pipeline**
+
+.. code-block:: python
+
+   from gastropy.neuro.fmri import (
+       regress_confounds,
+       bold_voxelwise_phases,
+       compute_plv_map,
+       compute_surrogate_plv_map,
+   )
+
+   # Confound regression (motion + aCompCor)
+   residuals = regress_confounds(bold_2d, confounds_df)
+
+   # Extract BOLD phase at individual gastric frequency
+   bold_phases = bold_voxelwise_phases(residuals, peak_freq_hz=0.05, sfreq=1/1.856)
+
+   # Compute PLV and surrogate maps
+   plv_map = compute_plv_map(egg_phase, bold_phases)
+   surr_map = compute_surrogate_plv_map(egg_phase, bold_phases, n_surrogates=200)
+
+**Downloading Sample fMRI Data**
+
+.. code-block:: python
+
+   # Download preprocessed BOLD from GitHub Release (requires pooch)
+   data = gp.fetch_fmri_bold(session="0001")
+   print(data["bold"])  # path to cached NIfTI file
+
 What's Next
 -----------
 
-For a hands-on walkthrough using real EGG data, see the
-:doc:`EGG Signal Processing Tutorial <tutorials/egg_processing>`.
+For hands-on walkthroughs using real data, see the
+:doc:`EGG Signal Processing Tutorial <tutorials/egg_processing>` and
+the :doc:`Gastric-Brain Coupling Tutorial <tutorials/gastric_brain_coupling>`.
 
-GastroPy is under active development. Upcoming modules include
-gastric-brain phase coupling, data I/O with BIDS support, and
-statistical testing. See the :doc:`API Reference <api/index>`
-for the full list of currently available functions.
+See the :doc:`API Reference <api/index>` for the full list of available
+functions.

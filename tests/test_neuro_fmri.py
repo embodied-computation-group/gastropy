@@ -217,12 +217,23 @@ class TestRegressConfounds:
         bold[0] = 5 * confound_signal + rng.standard_normal(n_time)
 
         confounds = pd.DataFrame(
-            {col: rng.standard_normal(n_time) for col in [
-                "trans_x", "trans_y", "trans_z",
-                "rot_x", "rot_y", "rot_z",
-                "a_comp_cor_00", "a_comp_cor_01", "a_comp_cor_02",
-                "a_comp_cor_03", "a_comp_cor_04", "a_comp_cor_05",
-            ]}
+            {
+                col: rng.standard_normal(n_time)
+                for col in [
+                    "trans_x",
+                    "trans_y",
+                    "trans_z",
+                    "rot_x",
+                    "rot_y",
+                    "rot_z",
+                    "a_comp_cor_00",
+                    "a_comp_cor_01",
+                    "a_comp_cor_02",
+                    "a_comp_cor_03",
+                    "a_comp_cor_04",
+                    "a_comp_cor_05",
+                ]
+            }
         )
         confounds["trans_x"] = confound_signal
 

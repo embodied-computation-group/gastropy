@@ -30,3 +30,14 @@ Processing
    quality_assessment
    psd_parameters
    fmri_egg_pipeline
+
+Coupling
+--------
+
+.. toctree::
+   :maxdepth: 1
+
+   plv_computation
+   surrogate_testing
+   circular_statistics
+   coupling_pipeline
