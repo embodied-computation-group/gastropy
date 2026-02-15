@@ -84,6 +84,56 @@ class TestPhaseLockingValue:
         plv = phase_locking_value(np.zeros(100), np.zeros(100))
         assert isinstance(plv, float)
 
+    def test_mask_excludes_timepoints(self):
+        """Mask should exclude specified timepoints from PLV."""
+        rng = np.random.default_rng(42)
+        n = 200
+        # First half: perfectly locked; second half: random noise
+        phase_a = np.zeros(n)
+        phase_b = np.full(n, 0.3)
+        phase_a[100:] = rng.uniform(-np.pi, np.pi, 100)
+        phase_b[100:] = rng.uniform(-np.pi, np.pi, 100)
+
+        mask = np.zeros(n, dtype=bool)
+        mask[:100] = True  # keep only the locked half
+
+        plv_masked = phase_locking_value(phase_a, phase_b, mask=mask)
+        plv_unmasked = phase_locking_value(phase_a, phase_b)
+
+        assert abs(plv_masked - 1.0) < 1e-10  # locked portion only
+        assert plv_unmasked < plv_masked  # full signal has lower PLV
+
+    def test_mask_none_same_as_no_mask(self):
+        """mask=None should give identical results to no mask."""
+        phase_a, phase_b = _make_phase_signals(noise=0.5)
+        plv1 = phase_locking_value(phase_a, phase_b)
+        plv2 = phase_locking_value(phase_a, phase_b, mask=None)
+        assert plv1 == plv2
+
+    def test_all_true_mask_same_as_no_mask(self):
+        """All-True mask should give same result as no mask."""
+        phase_a, phase_b = _make_phase_signals(noise=0.5)
+        mask = np.ones(len(phase_a), dtype=bool)
+        plv1 = phase_locking_value(phase_a, phase_b)
+        plv2 = phase_locking_value(phase_a, phase_b, mask=mask)
+        assert abs(plv1 - plv2) < 1e-10
+
+    def test_mask_with_2d_phase_a(self):
+        """Mask should work with 2D phase_a."""
+        rng = np.random.default_rng(42)
+        n = 200
+        phase_a = rng.uniform(-np.pi, np.pi, (n, 5))
+        phase_b = rng.uniform(-np.pi, np.pi, n)
+        # Lock first column in first half
+        phase_a[:100, 0] = phase_b[:100] + 0.1
+
+        mask = np.zeros(n, dtype=bool)
+        mask[:100] = True
+
+        plv = phase_locking_value(phase_a, phase_b, mask=mask)
+        assert plv.shape == (5,)
+        assert abs(plv[0] - 1.0) < 1e-10
+
 
 # ---------------------------------------------------------------------------
 # phase_locking_value_complex
@@ -296,6 +346,24 @@ class TestSurrogatePlv:
         surr1 = surrogate_plv(phase_a, phase_b, n_surrogates=20, seed=123)
         surr2 = surrogate_plv(phase_a, phase_b, n_surrogates=20, seed=123)
         assert surr1 == surr2
+
+    def test_mask_passed_through(self):
+        """Mask should be passed through to phase_locking_value."""
+        rng = np.random.default_rng(42)
+        n = 200
+        phase_a = np.zeros(n)
+        phase_b = np.full(n, 0.3)
+        # Corrupt second half
+        phase_a[100:] = rng.uniform(-np.pi, np.pi, 100)
+        phase_b[100:] = rng.uniform(-np.pi, np.pi, 100)
+
+        mask = np.zeros(n, dtype=bool)
+        mask[:100] = True
+
+        surr_masked = surrogate_plv(phase_a, phase_b, n_surrogates=10, seed=42, mask=mask)
+        surr_unmasked = surrogate_plv(phase_a, phase_b, n_surrogates=10, seed=42)
+        # Results should differ when mask is applied
+        assert surr_masked != surr_unmasked
 
 
 # ---------------------------------------------------------------------------

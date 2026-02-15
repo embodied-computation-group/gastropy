@@ -20,7 +20,7 @@ import numpy as np
 from .plv import phase_locking_value
 
 
-def surrogate_plv(phase_a, phase_b, buffer_samples=None, n_surrogates=None, stat="median", seed=None):
+def surrogate_plv(phase_a, phase_b, buffer_samples=None, n_surrogates=None, stat="median", seed=None, mask=None):
     """Compute surrogate PLV via circular time-shifting.
 
     Creates a null distribution of PLV by circularly shifting the
@@ -50,6 +50,9 @@ def surrogate_plv(phase_a, phase_b, buffer_samples=None, n_surrogates=None, stat
         of surrogate PLV values.
     seed : int or np.random.Generator, optional
         Random seed for reproducibility when ``n_surrogates`` is set.
+    mask : array_like of bool, shape (n_timepoints,), optional
+        Boolean mask where ``True`` = include. Passed through to
+        ``phase_locking_value`` for each surrogate shift.
 
     Returns
     -------
@@ -101,7 +104,7 @@ def surrogate_plv(phase_a, phase_b, buffer_samples=None, n_surrogates=None, stat
     surr_plvs = []
     for shift in shifts:
         shifted_b = np.roll(phase_b, int(shift))
-        plv = phase_locking_value(phase_a, shifted_b)
+        plv = phase_locking_value(phase_a, shifted_b, mask=mask)
         surr_plvs.append(plv)
 
     surr_plvs = np.array(surr_plvs)

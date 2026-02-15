@@ -9,6 +9,7 @@ import pytest
 from gastropy.neuro.fmri import (
     align_bold_to_egg,
     apply_volume_cuts,
+    artifact_mask_to_volumes,
     bold_voxelwise_phases,
     compute_plv_map,
     compute_surrogate_plv_map,
@@ -153,6 +154,91 @@ class TestApplyVolumeCuts:
         data = np.arange(10)
         trimmed = apply_volume_cuts(data, begin_cut=5, end_cut=6)
         assert len(trimmed) == 0
+
+
+# ---------------------------------------------------------------------------
+# artifact_mask_to_volumes
+# ---------------------------------------------------------------------------
+
+
+class TestArtifactMaskToVolumes:
+    def _make_triggers(self, n_volumes=420, tr=1.856):
+        """Helper: generate regular trigger times."""
+        return np.arange(n_volumes) * tr
+
+    def test_all_clean(self):
+        """No artifacts → all volumes clean (True)."""
+        n_volumes = 420
+        tr = 1.856
+        sfreq = 10.0
+        triggers = self._make_triggers(n_volumes, tr)
+        n_samples = int(triggers[-1] * sfreq) + 100
+        sample_mask = np.zeros(n_samples, dtype=bool)  # no artifacts
+
+        vol_mask = artifact_mask_to_volumes(sample_mask, triggers, sfreq, tr)
+        expected_len = n_volumes - 21 - 21
+        assert len(vol_mask) == expected_len
+        assert vol_mask.all()
+
+    def test_artifact_flags_volume(self):
+        """An artifact sample within a volume window → that volume is False."""
+        n_volumes = 100
+        tr = 2.0
+        sfreq = 10.0
+        triggers = self._make_triggers(n_volumes, tr)
+        n_samples = int(triggers[-1] * sfreq) + 50
+        sample_mask = np.zeros(n_samples, dtype=bool)
+
+        # Flag a single sample in volume 50 (after begin_cut=21, so index 29 in output)
+        vol_idx = 50
+        sample_in_vol = int(round(triggers[vol_idx] * sfreq)) + 5
+        sample_mask[sample_in_vol] = True
+
+        vol_mask = artifact_mask_to_volumes(sample_mask, triggers, sfreq, tr, begin_cut=21, end_cut=21)
+        # Volume 50 is at output index 50 - 21 = 29
+        assert not vol_mask[29]
+        # Other volumes should be clean
+        assert vol_mask[:29].all()
+        assert vol_mask[30:].all()
+
+    def test_zero_cuts(self):
+        """With zero edge cuts, output length equals n_volumes."""
+        n_volumes = 50
+        tr = 2.0
+        sfreq = 10.0
+        triggers = self._make_triggers(n_volumes, tr)
+        n_samples = int(triggers[-1] * sfreq) + 50
+        sample_mask = np.zeros(n_samples, dtype=bool)
+
+        vol_mask = artifact_mask_to_volumes(sample_mask, triggers, sfreq, tr, begin_cut=0, end_cut=0)
+        assert len(vol_mask) == n_volumes
+        assert vol_mask.all()
+
+    def test_excessive_cuts_returns_empty(self):
+        """Cuts exceeding n_volumes → empty array."""
+        triggers = self._make_triggers(10, 2.0)
+        sample_mask = np.zeros(300, dtype=bool)
+        vol_mask = artifact_mask_to_volumes(sample_mask, triggers, 10.0, 2.0, begin_cut=5, end_cut=6)
+        assert len(vol_mask) == 0
+
+    def test_multiple_artifacts(self):
+        """Multiple artifact samples across different volumes."""
+        n_volumes = 100
+        tr = 2.0
+        sfreq = 10.0
+        triggers = self._make_triggers(n_volumes, tr)
+        n_samples = int(triggers[-1] * sfreq) + 50
+        sample_mask = np.zeros(n_samples, dtype=bool)
+
+        # Flag artifacts in volumes 30 and 60
+        for vol_idx in [30, 60]:
+            s = int(round(triggers[vol_idx] * sfreq)) + 3
+            sample_mask[s] = True
+
+        vol_mask = artifact_mask_to_volumes(sample_mask, triggers, sfreq, tr, begin_cut=0, end_cut=0)
+        assert not vol_mask[30]
+        assert not vol_mask[60]
+        assert vol_mask.sum() == n_volumes - 2
 
 
 # ---------------------------------------------------------------------------

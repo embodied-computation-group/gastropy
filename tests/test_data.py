@@ -74,7 +74,7 @@ class TestListDatasets:
     def test_returns_list(self):
         ds = list_datasets()
         assert isinstance(ds, list)
-        assert len(ds) == 4
+        assert len(ds) == 5
 
     def test_contains_expected(self):
         ds = list_datasets()

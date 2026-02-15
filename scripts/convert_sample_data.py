@@ -29,7 +29,7 @@ WOLPERT_DIR = Path(r"c:\Users\Micah\vibes\EGG_Scripts")
 
 # --- Config ---
 TARGET_SFREQ = 10.0  # Hz — standard for gastropy
-SEMI_PRECISION_SESSIONS = ["0001", "0003", "0004"]  # 3 baseline sessions
+SEMI_PRECISION_SESSIONS = ["0001", "0003", "0004", "0008"]
 TR = 1.856  # seconds
 
 
