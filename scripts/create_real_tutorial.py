@@ -78,7 +78,7 @@ code(
     "    regress_confounds,\n"
     "    to_nifti,\n"
     ")\n"
-    "from gastropy.signal import detect_phase_artifacts\n"
+    "from gastropy.signal import detect_phase_artifacts, resample_signal\n"
     "\n"
     'plt.rcParams["figure.dpi"] = 100\n'
     'plt.rcParams["figure.facecolor"] = "white"'
@@ -215,23 +215,31 @@ code(
     "filtered, filt_info = gp.apply_bandpass(\n"
     '    egg["signal"][best_idx], sfreq, low_hz=low_hz, high_hz=high_hz\n'
     ")\n"
-    "phase, analytic = gp.instantaneous_phase(filtered)\n"
-    "print(f\"Filter taps: {filt_info.get('fir_numtaps', 'N/A')}\")"
+    "print(f\"Filter taps: {filt_info.get('fir_numtaps', 'N/A')}\")\n"
+    "\n"
+    "# Phase at 10 Hz (for artifact detection later)\n"
+    "phase_10hz, _ = gp.instantaneous_phase(filtered)\n"
+    "\n"
+    "# Resample to fMRI rate, then Hilbert for per-volume phase\n"
+    'fmri_sfreq = 1.0 / egg["tr"]\n'
+    "filtered_fmri, actual_fmri_sfreq = resample_signal(filtered, sfreq, fmri_sfreq)\n"
+    "phase_fmri, analytic_fmri = gp.instantaneous_phase(filtered_fmri)\n"
+    'print(f"Resampled to fMRI rate: {len(filtered_fmri)} samples @ {actual_fmri_sfreq:.4f} Hz")'
 )
 
 # === Cell 12: Phase section ===
 md(
     "## 4. Per-Volume EGG Phase\n"
     "\n"
-    "Map the continuous EGG phase (10 Hz) to one phase value per fMRI volume,\n"
-    "then trim 21 transient volumes from each edge (standard practice to\n"
-    "remove filter ringing artifacts)."
+    "Map the fMRI-rate EGG phase to one phase value per volume using the\n"
+    "scanner trigger windows, then trim 21 transient volumes from each edge\n"
+    "(standard practice to remove filter ringing artifacts)."
 )
 
 # === Cell 13: Phase per volume ===
 code(
     'windows = create_volume_windows(egg["trigger_times"], egg["tr"], n_triggers)\n'
-    "egg_vol_phase = phase_per_volume(analytic, windows)\n"
+    "egg_vol_phase = phase_per_volume(analytic_fmri, windows)\n"
     "\n"
     "begin_cut, end_cut = 21, 21\n"
     "egg_phase = apply_volume_cuts(egg_vol_phase, begin_cut, end_cut)\n"
@@ -259,11 +267,11 @@ md(
 # === Cell 16: Artifact detection ===
 code(
     "# Detect phase artifacts on continuous 10 Hz signal\n"
-    "times_10hz = np.arange(len(phase)) / sfreq\n"
-    "artifact_info = detect_phase_artifacts(phase, times_10hz)\n"
+    "times_10hz = np.arange(len(phase_10hz)) / sfreq\n"
+    "artifact_info = detect_phase_artifacts(phase_10hz, times_10hz)\n"
     "\n"
     "print(f\"Artifacts detected: {artifact_info['n_artifacts']}\")\n"
-    "print(f\"Artifact samples: {artifact_info['artifact_mask'].sum()} / {len(phase)}\")\n"
+    "print(f\"Artifact samples: {artifact_info['artifact_mask'].sum()} / {len(phase_10hz)}\")\n"
     "\n"
     "# Map sample-level artifacts to volume-level mask\n"
     "vol_mask = artifact_mask_to_volumes(\n"
@@ -282,7 +290,7 @@ code(
 
 # === Cell 17: Artifact plot ===
 code(
-    "fig, ax = gp.plot_artifacts(phase, times_10hz, artifact_info)\n"
+    "fig, ax = gp.plot_artifacts(phase_10hz, times_10hz, artifact_info)\n"
     "ax.set_title(f\"Phase Artifacts ({artifact_info['n_artifacts']} detected)\")\n"
     "plt.show()"
 )
@@ -514,7 +522,7 @@ md(
     "| Load + smooth BOLD | nibabel + ``smooth_img(fwhm=6)`` | ~10 s |\n"
     "| Align volumes | ``align_bold_to_egg`` | instant |\n"
     "| EGG channel selection | ``select_best_channel`` | instant |\n"
-    "| EGG bandpass + phase | ``apply_bandpass`` + ``instantaneous_phase`` | instant |\n"
+    "| EGG bandpass + resample + phase | ``apply_bandpass`` + ``resample_signal`` + ``instantaneous_phase`` | instant |\n"
     "| Per-volume phase | ``phase_per_volume`` + ``apply_volume_cuts`` | instant |\n"
     "| Artifact detection | ``detect_phase_artifacts`` + ``artifact_mask_to_volumes`` | instant |\n"
     "| Confound regression | ``regress_confounds`` | ~5 s |\n"
