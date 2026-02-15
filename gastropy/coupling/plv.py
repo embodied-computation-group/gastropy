@@ -15,7 +15,7 @@ Cohen, M. X. (2014). *Analyzing Neural Time Series Data*. MIT Press.
 import numpy as np
 
 
-def phase_locking_value(phase_a, phase_b):
+def phase_locking_value(phase_a, phase_b, mask=None):
     """Compute the phase-locking value between two phase time series.
 
     PLV measures the consistency of the phase difference between two
@@ -30,6 +30,9 @@ def phase_locking_value(phase_a, phase_b):
     phase_b : array_like, shape (n_timepoints,)
         Reference phase time series in radians. Broadcast against
         columns of ``phase_a`` when ``phase_a`` is 2D.
+    mask : array_like of bool, shape (n_timepoints,), optional
+        Boolean mask where ``True`` = include, ``False`` = exclude.
+        Only the included timepoints contribute to the PLV.
 
     Returns
     -------
@@ -51,10 +54,10 @@ def phase_locking_value(phase_a, phase_b):
     >>> round(plv, 2)
     1.0
     """
-    return np.abs(phase_locking_value_complex(phase_a, phase_b))
+    return np.abs(phase_locking_value_complex(phase_a, phase_b, mask=mask))
 
 
-def phase_locking_value_complex(phase_a, phase_b):
+def phase_locking_value_complex(phase_a, phase_b, mask=None):
     """Compute the complex phase-locking value.
 
     Returns the complex mean of the phase difference, from which both
@@ -66,6 +69,9 @@ def phase_locking_value_complex(phase_a, phase_b):
         Phase time series in radians.
     phase_b : array_like, shape (n_timepoints,)
         Reference phase time series in radians.
+    mask : array_like of bool, shape (n_timepoints,), optional
+        Boolean mask where ``True`` = include, ``False`` = exclude.
+        Only the included timepoints contribute to the complex mean.
 
     Returns
     -------
@@ -87,22 +93,24 @@ def phase_locking_value_complex(phase_a, phase_b):
     phase_a = np.asarray(phase_a, dtype=float)
     phase_b = np.asarray(phase_b, dtype=float)
 
-    if phase_a.ndim == 1 and phase_b.ndim == 1:
+    if (phase_a.ndim == 1 and phase_b.ndim == 1) or phase_a.ndim == 2:
         if phase_a.shape[0] != phase_b.shape[0]:
             raise ValueError(
                 f"phase_a and phase_b must have the same number of timepoints, "
                 f"got {phase_a.shape[0]} and {phase_b.shape[0]}"
             )
-    elif phase_a.ndim == 2:
-        if phase_a.shape[0] != phase_b.shape[0]:
-            raise ValueError(
-                f"phase_a and phase_b must have the same number of timepoints, "
-                f"got {phase_a.shape[0]} and {phase_b.shape[0]}"
-            )
-        # Broadcast phase_b to match: (n_timepoints,) -> (n_timepoints, 1)
-        phase_b = phase_b[:, np.newaxis]
     else:
         raise ValueError(f"phase_a must be 1D or 2D, got {phase_a.ndim}D")
+
+    # Apply mask before computing phase difference
+    if mask is not None:
+        mask = np.asarray(mask, dtype=bool)
+        phase_a = phase_a[mask]
+        phase_b = phase_b[mask]
+
+    # Broadcast phase_b to match 2D phase_a
+    if phase_a.ndim == 2:
+        phase_b = phase_b[:, np.newaxis]
 
     phase_diff = phase_a - phase_b
     cplv = np.mean(np.exp(1j * phase_diff), axis=0)

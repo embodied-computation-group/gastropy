@@ -24,7 +24,7 @@ __all__ = ["load_fmri_egg", "load_egg", "list_datasets", "fetch_fmri_bold"]
 
 _DATA_DIR = Path(__file__).parent
 
-_FMRI_SESSIONS = ("0001", "0003", "0004")
+_FMRI_SESSIONS = ("0001", "0003", "0004", "0008")
 
 
 def _load_npz(filename):
@@ -44,8 +44,8 @@ def load_fmri_egg(session="0001"):
     Parameters
     ----------
     session : str
-        Session identifier. Available: ``"0001"``, ``"0003"``, ``"0004"``
-        (three baseline sessions from the semi_precision study).
+        Session identifier. Available: ``"0001"``, ``"0003"``, ``"0004"``,
+        ``"0008"`` (from the semi_precision study).
 
     Returns
     -------
@@ -176,6 +176,20 @@ _FMRI_BOLD_REGISTRY = {
             "sha256:7736cee95003ceb8f55a763be94f8130ab356eddbcaef18a8451954a95de53d7",
         ),
     },
+    "0008": {
+        "bold": (
+            "sub-01_ses-20241101_task-rest_run-01_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
+            "sha256:f17edfd40e5770bad7e195168fd0009b1d8fb00e80306042b4c0aad2c894cdc8",
+        ),
+        "mask": (
+            "sub-01_ses-20241101_task-rest_run-01_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz",
+            "sha256:73f538f88fe28515012cadb5e19ee0c1feaf5da8f40de77794d028a218f820fd",
+        ),
+        "confounds": (
+            "sub-01_ses-20241101_task-rest_run-01_desc-confounds_timeseries.tsv",
+            "sha256:d8f6880b41b996f2a68485226d425629d0d3217c65d1aaeeb0cdfd3023346ae9",
+        ),
+    },
 }
 
 
@@ -192,7 +206,7 @@ def fetch_fmri_bold(session="0001", data_dir=None):
     Parameters
     ----------
     session : str
-        Session identifier. Available: ``"0001"``.
+        Session identifier. Available: ``"0001"``, ``"0008"``.
     data_dir : str or Path, optional
         Directory to store downloaded files. Default uses
         ``pooch``'s OS-appropriate cache directory.

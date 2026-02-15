@@ -315,7 +315,7 @@ def bold_voxelwise_phases(
     return phases
 
 
-def compute_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None):
+def compute_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None, artifact_mask=None):
     """Compute a voxelwise PLV map between EGG and BOLD phases.
 
     Parameters
@@ -332,6 +332,9 @@ def compute_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None):
     mask_indices : array_like, optional
         Boolean mask or integer indices mapping voxels back to the
         3D volume. Required if ``vol_shape`` is provided.
+    artifact_mask : array_like of bool, shape (n_timepoints,), optional
+        Boolean mask where ``True`` = clean volume, ``False`` = artifact.
+        Artifact volumes are excluded from the PLV computation.
 
     Returns
     -------
@@ -349,7 +352,7 @@ def compute_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None):
         )
 
     # PLV: (n_timepoints, n_voxels) vs (n_timepoints,)
-    plv = phase_locking_value(bold_phases.T, egg_phase)
+    plv = phase_locking_value(bold_phases.T, egg_phase, mask=artifact_mask)
 
     if vol_shape is not None and mask_indices is not None:
         vol = np.zeros(vol_shape, dtype=float)
@@ -359,7 +362,7 @@ def compute_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None):
     return plv
 
 
-def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None, **kwargs):
+def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indices=None, artifact_mask=None, **kwargs):
     """Compute a surrogate PLV map via circular time-shifting.
 
     Same as ``compute_plv_map`` but uses surrogate PLV to generate
@@ -375,6 +378,9 @@ def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indic
         3D volume dimensions for reshaping output.
     mask_indices : array_like, optional
         Mask indices for 3D volume reconstruction.
+    artifact_mask : array_like of bool, shape (n_timepoints,), optional
+        Boolean mask where ``True`` = clean volume, ``False`` = artifact.
+        Artifact volumes are excluded from the surrogate PLV computation.
     **kwargs
         Additional arguments passed to ``surrogate_plv``
         (e.g., ``buffer_samples``, ``n_surrogates``, ``stat``, ``seed``).
@@ -398,7 +404,7 @@ def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indic
             f"bold_phases has {bold_phases.shape[1]}. They must match."
         )
 
-    surr = _surrogate_plv(bold_phases.T, egg_phase, **kwargs)
+    surr = _surrogate_plv(bold_phases.T, egg_phase, mask=artifact_mask, **kwargs)
 
     if vol_shape is not None and mask_indices is not None and surr.ndim == 1:
         vol = np.zeros(vol_shape, dtype=float)
@@ -406,6 +412,63 @@ def compute_surrogate_plv_map(egg_phase, bold_phases, vol_shape=None, mask_indic
         return vol
 
     return surr
+
+
+def artifact_mask_to_volumes(sample_mask, trigger_times, sfreq, tr, begin_cut=21, end_cut=21):
+    """Map a sample-level artifact mask to volume-level.
+
+    Converts the per-sample boolean artifact mask (from
+    ``detect_phase_artifacts``) to a per-volume boolean mask
+    suitable for censoring bad volumes in PLV computation.
+
+    A volume is marked as artifact (``False``) if **any** EGG sample
+    within its time window is flagged in the sample mask.
+
+    Parameters
+    ----------
+    sample_mask : array_like of bool
+        Per-sample artifact mask where ``True`` = artifact sample.
+        This is the ``artifact_mask`` field from
+        ``detect_phase_artifacts``, at the EGG sampling rate.
+    trigger_times : array_like
+        Scanner trigger onset times in seconds (from
+        ``find_scanner_triggers``).
+    sfreq : float
+        EGG sampling frequency in Hz (e.g., 10.0).
+    tr : float
+        fMRI repetition time in seconds.
+    begin_cut : int, optional
+        Volumes to remove from the start. Default is 21.
+    end_cut : int, optional
+        Volumes to remove from the end. Default is 21.
+
+    Returns
+    -------
+    vol_mask : np.ndarray of bool
+        Per-volume mask where ``True`` = clean volume (include),
+        ``False`` = artifact volume (exclude). Length equals
+        ``n_volumes - begin_cut - end_cut``.
+    """
+    sample_mask = np.asarray(sample_mask, dtype=bool)
+    trigger_times = np.asarray(trigger_times, dtype=float)
+    n_samples = len(sample_mask)
+    n_volumes = len(trigger_times)
+
+    vol_clean = np.ones(n_volumes, dtype=bool)
+    for k in range(n_volumes):
+        t_start = trigger_times[k]
+        t_end = trigger_times[k + 1] if k + 1 < n_volumes else t_start + tr
+        s = min(int(round(t_start * sfreq)), n_samples)
+        e = min(int(round(t_end * sfreq)), n_samples)
+        if s < e and np.any(sample_mask[s:e]):
+            vol_clean[k] = False
+
+    # Apply volume cuts
+    if begin_cut + end_cut >= n_volumes:
+        return np.array([], dtype=bool)
+    if end_cut == 0:
+        return vol_clean[begin_cut:]
+    return vol_clean[begin_cut:-end_cut]
 
 
 def load_bold(bold_path, mask_path):
@@ -529,6 +592,7 @@ __all__ = [
     "create_volume_windows",
     "phase_per_volume",
     "apply_volume_cuts",
+    "artifact_mask_to_volumes",
     "regress_confounds",
     "bold_voxelwise_phases",
     "compute_plv_map",

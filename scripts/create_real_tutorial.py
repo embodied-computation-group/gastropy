@@ -39,15 +39,17 @@ md(
     "**What you'll learn:**\n"
     "- Loading and aligning fMRI-concurrent EGG with BOLD data\n"
     "- EGG channel selection and narrowband filtering\n"
+    "- Spatial smoothing of BOLD data\n"
     "- BOLD confound regression and phase extraction\n"
+    "- Artifact detection and volume censoring\n"
     "- Computing voxelwise PLV maps\n"
     "- Surrogate statistical testing\n"
     "- Visualizing volumetric coupling maps with nilearn\n"
     "\n"
     "**Prerequisites:** ``pip install gastropy[neuro]`` (adds nibabel, nilearn, pooch)\n"
     "\n"
-    "**Data:** ~1.4 GB download on first run (cached for subsequent runs).\n"
-    "Session 0001 from the semi_precision study: 8-channel EGG at 10 Hz,\n"
+    "**Data:** ~1.2 GB download on first run (cached for subsequent runs).\n"
+    "Session 0008 from the semi_precision study: 8-channel EGG at 10 Hz,\n"
     "fMRIPrep BOLD in MNI152NLin2009cAsym space (2 mm), TR = 1.856 s.\n"
     "\n"
     "**Expected runtime:** ~10 minutes (mostly surrogate computation)."
@@ -58,22 +60,25 @@ code(
     "import time\n"
     "\n"
     "import matplotlib.pyplot as plt\n"
+    "import nibabel as nib\n"
     "import numpy as np\n"
     "import pandas as pd\n"
+    "from nilearn.image import smooth_img\n"
     "\n"
     "import gastropy as gp\n"
     "from gastropy.neuro.fmri import (\n"
     "    align_bold_to_egg,\n"
     "    apply_volume_cuts,\n"
+    "    artifact_mask_to_volumes,\n"
     "    bold_voxelwise_phases,\n"
     "    compute_plv_map,\n"
     "    compute_surrogate_plv_map,\n"
     "    create_volume_windows,\n"
-    "    load_bold,\n"
     "    phase_per_volume,\n"
     "    regress_confounds,\n"
     "    to_nifti,\n"
     ")\n"
+    "from gastropy.signal import detect_phase_artifacts\n"
     "\n"
     'plt.rcParams["figure.dpi"] = 100\n'
     'plt.rcParams["figure.facecolor"] = "white"'
@@ -90,11 +95,11 @@ md(
 
 # === Cell 3: Load EGG ===
 code(
-    "# Download BOLD data (~1.4 GB, cached after first run)\n"
-    'fmri_paths = gp.fetch_fmri_bold(session="0001")\n'
+    "# Download BOLD data (~1.2 GB, cached after first run)\n"
+    'fmri_paths = gp.fetch_fmri_bold(session="0008")\n'
     "\n"
     "# Load bundled EGG data\n"
-    'egg = gp.load_fmri_egg(session="0001")\n'
+    'egg = gp.load_fmri_egg(session="0008")\n'
     "\n"
     'print("EGG data:")\n'
     "print(f\"  Signal shape: {egg['signal'].shape} (channels x samples)\")\n"
@@ -104,23 +109,47 @@ code(
     "print(f\"  Duration: {egg['duration_s']:.0f} s ({egg['duration_s']/60:.1f} min)\")"
 )
 
-# === Cell 4: Load BOLD ===
+# === Cell 4: Load and smooth BOLD ===
+md(
+    "### 1b. Load and Smooth BOLD\n"
+    "\n"
+    "We load the BOLD NIfTI directly with nibabel, apply 6 mm FWHM Gaussian\n"
+    "spatial smoothing with nilearn, then mask to extract brain voxels.\n"
+    "Smoothing before masking is standard practice."
+)
+
+# === Cell 5: Load BOLD with smoothing ===
 code(
-    "# Load BOLD NIfTI and brain mask\n"
     "t0 = time.time()\n"
-    'bold_data = load_bold(fmri_paths["bold"], fmri_paths["mask"])\n'
-    'print(f"BOLD loaded in {time.time() - t0:.1f} s")\n'
-    "print(f\"  Volume shape: {bold_data['vol_shape']}\")\n"
-    "print(f\"  Volumes: {bold_data['n_volumes']}\")\n"
-    "print(f\"  Brain voxels: {bold_data['bold_2d'].shape[0]:,}\")\n"
-    "print(f\"  Memory: {bold_data['bold_2d'].nbytes / 1e9:.2f} GB\")\n"
+    "\n"
+    "# Load NIfTI images\n"
+    'bold_img = nib.load(fmri_paths["bold"])\n'
+    'mask_img = nib.load(fmri_paths["mask"])\n'
+    "\n"
+    "# Spatial smoothing (6 mm FWHM Gaussian)\n"
+    "bold_smooth = smooth_img(bold_img, fwhm=6)\n"
+    "\n"
+    "# Extract brain voxels using the mask\n"
+    "mask_data = mask_img.get_fdata().astype(bool)\n"
+    "bold_4d = bold_smooth.get_fdata(dtype=np.float32)\n"
+    "vol_shape = mask_data.shape\n"
+    "n_volumes = bold_4d.shape[-1]\n"
+    "bold_2d_all = bold_4d[mask_data]  # (n_voxels, n_volumes)\n"
+    "affine = bold_img.affine\n"
+    "\n"
+    "elapsed = time.time() - t0\n"
+    'print(f"BOLD loaded + smoothed (6 mm) in {elapsed:.1f} s")\n'
+    'print(f"  Volume shape: {vol_shape}")\n'
+    'print(f"  Volumes: {n_volumes}")\n'
+    'print(f"  Brain voxels: {bold_2d_all.shape[0]:,}")\n'
+    'print(f"  Memory: {bold_2d_all.nbytes / 1e9:.2f} GB")\n'
     "\n"
     "# Load confounds\n"
     'confounds = pd.read_csv(fmri_paths["confounds"], sep="\\t")\n'
     'print(f"\\nConfounds: {confounds.shape[0]} rows x {confounds.shape[1]} columns")'
 )
 
-# === Cell 5: Align section ===
+# === Cell 6: Align section ===
 md(
     "## 2. Align BOLD Volumes to EGG Triggers\n"
     "\n"
@@ -129,21 +158,21 @@ md(
     "BOLD volumes that correspond to EGG scanner triggers."
 )
 
-# === Cell 6: Align ===
+# === Cell 7: Align ===
 code(
     'n_triggers = len(egg["trigger_times"])\n'
-    "print(f\"BOLD volumes: {bold_data['n_volumes']}\")\n"
+    'print(f"BOLD volumes: {n_volumes}")\n'
     'print(f"EGG triggers: {n_triggers}")\n'
-    "print(f\"Discarding {bold_data['n_volumes'] - n_triggers} extra BOLD volumes\")\n"
+    'print(f"Discarding {n_volumes - n_triggers} extra BOLD volumes")\n'
     "\n"
     "bold_2d, confounds_aligned = align_bold_to_egg(\n"
-    '    bold_data["bold_2d"], n_triggers, confounds\n'
+    "    bold_2d_all, n_triggers, confounds\n"
     ")\n"
     'print(f"\\nAligned BOLD: {bold_2d.shape}")\n'
     'print(f"Aligned confounds: {confounds_aligned.shape}")'
 )
 
-# === Cell 7: EGG section ===
+# === Cell 8: EGG section ===
 md(
     "## 3. EGG Processing: Channel Selection and Filtering\n"
     "\n"
@@ -152,7 +181,7 @@ md(
     "frequency."
 )
 
-# === Cell 8: EGG processing ===
+# === Cell 9: EGG processing ===
 code(
     'sfreq = egg["sfreq"]\n'
     'ch_names = list(egg["ch_names"])\n'
@@ -168,14 +197,14 @@ code(
     ").T"
 )
 
-# === Cell 9: PSD plot ===
+# === Cell 10: PSD plot ===
 code(
     "fig, ax = gp.plot_psd(freqs, all_psd, best_idx=best_idx, peak_freq=peak_freq, ch_names=ch_names)\n"
     'ax.set_title(f"EGG Power Spectral Density \\u2014 Best: {ch_names[best_idx]}")\n'
     "plt.show()"
 )
 
-# === Cell 10: Filter ===
+# === Cell 11: Filter ===
 code(
     "# Narrowband filter at individual peak frequency\n"
     "hwhm = 0.015  # Hz (half-width at half-maximum)\n"
@@ -190,7 +219,7 @@ code(
     "print(f\"Filter taps: {filt_info.get('fir_numtaps', 'N/A')}\")"
 )
 
-# === Cell 11: Phase section ===
+# === Cell 12: Phase section ===
 md(
     "## 4. Per-Volume EGG Phase\n"
     "\n"
@@ -199,7 +228,7 @@ md(
     "remove filter ringing artifacts)."
 )
 
-# === Cell 12: Phase per volume ===
+# === Cell 13: Phase per volume ===
 code(
     'windows = create_volume_windows(egg["trigger_times"], egg["tr"], n_triggers)\n'
     "egg_vol_phase = phase_per_volume(analytic, windows)\n"
@@ -211,25 +240,65 @@ code(
     'print(f"After trimming ({begin_cut} + {end_cut}): {len(egg_phase)}")'
 )
 
-# === Cell 13: Phase plot ===
+# === Cell 14: Phase plot ===
 code(
     'fig, ax = gp.plot_volume_phase(egg_vol_phase, tr=egg["tr"], cut_start=begin_cut, cut_end=end_cut)\n'
     'ax.set_title("EGG Phase Per Volume (shaded = trimmed transients)")\n'
     "plt.show()"
 )
 
-# === Cell 14: BOLD section ===
+# === Cell 15: Artifact section ===
 md(
-    "## 5. BOLD Processing\n"
+    "## 5. Artifact Detection and Volume Censoring\n"
     "\n"
-    "### 5a. Confound Regression\n"
+    "Detect phase artifacts in the continuous 10 Hz EGG phase and map them\n"
+    "to volume-level. Volumes containing any artifact sample are censored\n"
+    "(excluded from PLV computation)."
+)
+
+# === Cell 16: Artifact detection ===
+code(
+    "# Detect phase artifacts on continuous 10 Hz signal\n"
+    "times_10hz = np.arange(len(phase)) / sfreq\n"
+    "artifact_info = detect_phase_artifacts(phase, times_10hz)\n"
+    "\n"
+    "print(f\"Artifacts detected: {artifact_info['n_artifacts']}\")\n"
+    "print(f\"Artifact samples: {artifact_info['artifact_mask'].sum()} / {len(phase)}\")\n"
+    "\n"
+    "# Map sample-level artifacts to volume-level mask\n"
+    "vol_mask = artifact_mask_to_volumes(\n"
+    "    artifact_info['artifact_mask'],\n"
+    "    egg['trigger_times'],\n"
+    "    sfreq,\n"
+    "    egg['tr'],\n"
+    "    begin_cut=begin_cut,\n"
+    "    end_cut=end_cut,\n"
+    ")\n"
+    "\n"
+    'print(f"\\nVolume mask: {len(vol_mask)} volumes")\n'
+    'print(f"  Clean: {vol_mask.sum()}")\n'
+    'print(f"  Censored: {(~vol_mask).sum()}")'
+)
+
+# === Cell 17: Artifact plot ===
+code(
+    "fig, ax = gp.plot_artifacts(phase, times_10hz, artifact_info)\n"
+    "ax.set_title(f\"Phase Artifacts ({artifact_info['n_artifacts']} detected)\")\n"
+    "plt.show()"
+)
+
+# === Cell 18: BOLD section ===
+md(
+    "## 6. BOLD Processing\n"
+    "\n"
+    "### 6a. Confound Regression\n"
     "\n"
     "Remove motion and noise confounds from BOLD data using GLM regression.\n"
     "Default regressors: 6 motion parameters + 6 aCompCor components\n"
     "(12 total)."
 )
 
-# === Cell 15: Confound regression ===
+# === Cell 19: Confound regression ===
 code(
     "t0 = time.time()\n"
     "residuals = regress_confounds(bold_2d, confounds_aligned)\n"
@@ -237,7 +306,7 @@ code(
     'print(f"Confound regression: {elapsed:.1f} s ({residuals.shape[0]:,} voxels)")'
 )
 
-# === Cell 16: Confound QC plot ===
+# === Cell 20: Confound QC plot ===
 code(
     "# Show effect of confound regression on an example voxel\n"
     "voxel_idx = 150000\n"
@@ -260,9 +329,9 @@ code(
     "plt.show()"
 )
 
-# === Cell 17: BOLD phase section ===
+# === Cell 21: BOLD phase section ===
 md(
-    "### 5b. BOLD Phase Extraction\n"
+    "### 6b. BOLD Phase Extraction\n"
     "\n"
     "Bandpass filter each voxel at the same gastric frequency as the EGG,\n"
     "then extract instantaneous phase via Hilbert transform.\n"
@@ -272,7 +341,7 @@ md(
     "rates. The vectorized IIR path processes all ~350K voxels at once."
 )
 
-# === Cell 18: BOLD phases ===
+# === Cell 22: BOLD phases ===
 code(
     "t0 = time.time()\n"
     "bold_phases = bold_voxelwise_phases(\n"
@@ -288,26 +357,31 @@ code(
     'print(f"EGG phase length:  {len(egg_phase)} (should match)")'
 )
 
-# === Cell 19: PLV section ===
+# === Cell 23: PLV section ===
 md(
-    "## 6. Compute PLV Map\n"
+    "## 7. Compute PLV Map\n"
     "\n"
     "Phase-locking value (PLV) between EGG phase and each BOLD voxel's\n"
-    "phase. Values range from 0 (no coupling) to 1 (perfect phase locking)."
+    "phase. Values range from 0 (no coupling) to 1 (perfect phase locking).\n"
+    "\n"
+    "We pass the artifact mask to exclude censored volumes from the PLV\n"
+    "computation."
 )
 
-# === Cell 20: PLV map ===
+# === Cell 24: PLV map ===
 code(
     "plv_3d = compute_plv_map(\n"
     "    egg_phase,\n"
     "    bold_phases,\n"
-    '    vol_shape=bold_data["vol_shape"],\n'
-    '    mask_indices=bold_data["mask"],\n'
+    "    vol_shape=vol_shape,\n"
+    "    mask_indices=mask_data,\n"
+    "    artifact_mask=vol_mask,\n"
     ")\n"
     "\n"
-    'plv_flat = plv_3d[bold_data["mask"]]\n'
+    "plv_flat = plv_3d[mask_data]\n"
     "\n"
     'print(f"PLV volume shape: {plv_3d.shape}")\n'
+    'print(f"Volumes used: {vol_mask.sum()} / {len(vol_mask)} (after censoring)")\n'
     'print("PLV statistics (brain voxels only):")\n'
     'print(f"  Mean:   {plv_flat.mean():.4f}")\n'
     'print(f"  Median: {np.median(plv_flat):.4f}")\n'
@@ -315,23 +389,23 @@ code(
     'print(f"  Std:    {plv_flat.std():.4f}")'
 )
 
-# === Cell 21: PLV stat map ===
+# === Cell 25: PLV stat map ===
 code(
-    'plv_img = to_nifti(plv_3d, bold_data["affine"])\n'
+    "plv_img = to_nifti(plv_3d, affine)\n"
     "\n"
     "# Stat map overlay on MNI template\n"
     'display = gp.plot_coupling_map(plv_img, threshold=0.04, title="Empirical PLV Map")\n'
     "plt.show()"
 )
 
-# === Cell 22: PLV glass brain ===
+# === Cell 26: PLV glass brain ===
 code(
     "# Glass brain (transparent overview)\n"
     'display = gp.plot_glass_brain(plv_img, threshold=0.04, title="Empirical PLV \\u2014 Glass Brain")\n'
     "plt.show()"
 )
 
-# === Cell 23: PLV histogram ===
+# === Cell 27: PLV histogram ===
 code(
     "fig, ax = plt.subplots(figsize=(8, 3))\n"
     'ax.hist(plv_flat, bins=50, color="steelblue", edgecolor="white", alpha=0.8)\n'
@@ -346,43 +420,45 @@ code(
     "plt.show()"
 )
 
-# === Cell 24: Surrogate section ===
+# === Cell 28: Surrogate section ===
 md(
-    "## 7. Surrogate Statistical Testing\n"
+    "## 8. Surrogate Statistical Testing\n"
     "\n"
     "Observed PLV may be non-zero by chance due to autocorrelation. We test\n"
     "significance using the **circular time-shift** method: shift the EGG\n"
     "phase by random offsets and recompute PLV to build a null distribution.\n"
     "\n"
-    "We use 50 surrogates here for speed. For publication, use 200+."
+    "We use 200 surrogates (publication-quality). The artifact mask is\n"
+    "applied consistently to each surrogate shift."
 )
 
-# === Cell 25: Surrogate PLV ===
+# === Cell 29: Surrogate PLV ===
 code(
     "t0 = time.time()\n"
     "surr_3d = compute_surrogate_plv_map(\n"
     "    egg_phase,\n"
     "    bold_phases,\n"
-    '    vol_shape=bold_data["vol_shape"],\n'
-    '    mask_indices=bold_data["mask"],\n'
-    "    n_surrogates=50,\n"
+    "    vol_shape=vol_shape,\n"
+    "    mask_indices=mask_data,\n"
+    "    n_surrogates=200,\n"
     "    seed=42,\n"
+    "    artifact_mask=vol_mask,\n"
     ")\n"
     "elapsed = time.time() - t0\n"
-    'surr_flat = surr_3d[bold_data["mask"]]\n'
+    "surr_flat = surr_3d[mask_data]\n"
     "\n"
-    'print(f"Surrogate PLV: {elapsed:.1f} s (50 circular shifts)")\n'
+    'print(f"Surrogate PLV: {elapsed:.1f} s (200 circular shifts)")\n'
     'print("Surrogate PLV (brain voxels):")\n'
     'print(f"  Mean: {surr_flat.mean():.4f}")\n'
     'print(f"  Max:  {surr_flat.max():.4f}")'
 )
 
-# === Cell 26: Z-score ===
+# === Cell 30: Z-score ===
 code(
     "# Z-score: empirical - surrogate (positive = true coupling)\n"
     "z_3d = np.zeros_like(plv_3d)\n"
-    'z_3d[bold_data["mask"]] = gp.coupling_zscore(plv_flat, surr_flat)\n'
-    'z_flat = z_3d[bold_data["mask"]]\n'
+    "z_3d[mask_data] = gp.coupling_zscore(plv_flat, surr_flat)\n"
+    "z_flat = z_3d[mask_data]\n"
     "\n"
     'print("Coupling z-score (brain voxels):")\n'
     'print(f"  Mean:  {z_flat.mean():.4f}")\n'
@@ -390,9 +466,9 @@ code(
     'print(f"  >0.01: {(z_flat > 0.01).sum():,} voxels ({(z_flat > 0.01).mean():.1%})")'
 )
 
-# === Cell 27: Z-score stat map ===
+# === Cell 31: Z-score stat map ===
 code(
-    'z_img = to_nifti(z_3d, bold_data["affine"])\n'
+    "z_img = to_nifti(z_3d, affine)\n"
     "\n"
     "display = gp.plot_coupling_map(\n"
     "    z_img, threshold=0.01,\n"
@@ -402,7 +478,7 @@ code(
     "plt.show()"
 )
 
-# === Cell 28: Z-score glass brain ===
+# === Cell 32: Z-score glass brain ===
 code(
     "display = gp.plot_glass_brain(\n"
     "    z_img, threshold=0.01,\n"
@@ -411,7 +487,7 @@ code(
     "plt.show()"
 )
 
-# === Cell 29: Comparison histogram ===
+# === Cell 33: Comparison histogram ===
 code(
     "fig, ax = plt.subplots(figsize=(8, 3))\n"
     'ax.hist(plv_flat, bins=50, alpha=0.6, color="steelblue", edgecolor="white", label="Empirical PLV")\n'
@@ -426,35 +502,37 @@ code(
     "plt.show()"
 )
 
-# === Cell 30: Summary ===
+# === Cell 34: Summary ===
 md(
-    "## 8. Summary\n"
+    "## 9. Summary\n"
     "\n"
     "This tutorial demonstrated the complete Rebollo et al. gastric-brain\n"
     "coupling pipeline on real fMRIPrep data:\n"
     "\n"
     "| Step | Function | Time |\n"
     "|------|----------|------|\n"
-    "| Load BOLD + mask | ``load_bold`` | ~8 s |\n"
+    "| Load + smooth BOLD | nibabel + ``smooth_img(fwhm=6)`` | ~10 s |\n"
     "| Align volumes | ``align_bold_to_egg`` | instant |\n"
     "| EGG channel selection | ``select_best_channel`` | instant |\n"
     "| EGG bandpass + phase | ``apply_bandpass`` + ``instantaneous_phase`` | instant |\n"
     "| Per-volume phase | ``phase_per_volume`` + ``apply_volume_cuts`` | instant |\n"
+    "| Artifact detection | ``detect_phase_artifacts`` + ``artifact_mask_to_volumes`` | instant |\n"
     "| Confound regression | ``regress_confounds`` | ~5 s |\n"
     "| BOLD phase extraction | ``bold_voxelwise_phases`` (IIR, vectorized) | ~7 s |\n"
-    "| PLV map | ``compute_plv_map`` | ~1 s |\n"
-    "| Surrogate testing | ``compute_surrogate_plv_map`` (50 shifts) | ~3 min |\n"
+    "| PLV map (with mask) | ``compute_plv_map`` | ~1 s |\n"
+    "| Surrogate testing (with mask) | ``compute_surrogate_plv_map`` (200 shifts) | ~10 min |\n"
     "| Visualization | ``plot_coupling_map`` / ``plot_glass_brain`` | instant |\n"
     "\n"
     "**Key parameters:**\n"
     "- EGG peak frequency: individual (data-driven)\n"
     "- Filter bandwidth: peak \u00b1 0.015 Hz (HWHM)\n"
+    "- Spatial smoothing: 6 mm FWHM Gaussian\n"
     "- Volume trimming: 21 from each edge\n"
+    "- Artifact censoring: volumes with bad EGG phase excluded\n"
     "- Confounds: 6 motion + 6 aCompCor (12 regressors)\n"
     "- BOLD filter: IIR Butterworth order 4 (vectorized)\n"
     "\n"
     "**For publication-quality results:**\n"
-    "- Use ``n_surrogates=200`` (or more)\n"
     '- Consider using the full surrogate distribution (``stat="all"``)\n'
     "  to compute permutation p-values and FDR correction"
 )
