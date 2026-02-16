@@ -26,6 +26,7 @@ htmlcov/
 docs/_build/
 docs/api/generated/
 docs/.jupyter_cache/
+docs/jupyter_execute/
 
 # IDE
 .vscode/
@@ -41,3 +42,6 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Local scripts output
+scripts/egg_survey/

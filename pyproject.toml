@@ -10,7 +10,12 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Micah Allen" },
+    { name = "Micah Allen", email = "micah@cfin.au.dk" },
+    { name = "Daniel Kluger" },
+    { name = "Leah Banellis" },
+    { name = "Ignacio Rebollo" },
+    { name = "Nils Kroemer" },
+    { name = "Edwin Dalmaijer" },
 ]
 keywords = [
     "electrogastrography",
