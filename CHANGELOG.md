@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`gastropy.io`** — BIDS peripheral physiology I/O module:
   `read_bids_physio`, `write_bids_physio`, `parse_bids_filename` (stdlib +
   numpy only), and `brainvision_to_bids` converter (optional MNE dependency).
-- 19 new tests for the IO module (read, write, round-trip, error handling,
-  BIDS filename parsing, BrainVision import guard).
+- 22 tests for the IO module (read, write, round-trip, error handling,
+  BIDS filename parsing, BrainVision conversion with mocked MNE).
 - Example MATLAB BIDSifier script (`examples/matlab/egg_to_bids.m`) for
   converting EGG recordings to BIDS physio format without Python.
 - "Importing Your Own Data" section in Getting Started docs.
@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   datasets are now stored as `_physio.tsv.gz` + `_physio.json` sidecar pairs
   following the BIDS peripheral physiology specification. The public API
   (`load_egg`, `load_fmri_egg`, `list_datasets`) returns identical results.
+- `read_bids_physio` uses `np.loadtxt` for faster TSV parsing (replaces
+  line-by-line Python loop).
+- `parse_bids_filename` now warns on filename entities missing a key-value
+  separator (`-`), instead of silently skipping them.
+- `brainvision_to_bids` uses `Path.joinpath` for cross-platform path
+  construction (fixes Windows compatibility).
 - `gastropy.data` internals now use `read_bids_physio` instead of `np.load`.
 - `pyproject.toml` build artifacts glob updated for BIDS file extensions.
 
@@ -31,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Legacy NPZ sample data files (`egg_standalone.npz`,
   `fmri_egg_session_*.npz`).
+- One-time `scripts/convert_npz_to_bids.py` migration script.
 
 ## [0.1.0] - 2026-02-16
 
