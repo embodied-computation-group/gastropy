@@ -373,3 +373,63 @@ def plot_egg_comprehensive(signals_df, sfreq, phase_per_vol=None, tr=None, artif
     axes[-1].set_xlabel("Time (seconds)")
     fig.tight_layout()
     return fig, axes
+
+
+def plot_tfr(freqs, times, power, band=None, vmin=None, vmax=None, cmap="viridis", ax=None):
+    """Plot a time-frequency representation as a heatmap.
+
+    Displays Morlet wavelet power (or any 2D time-frequency array) with
+    time on the x-axis and frequency on the y-axis.
+
+    Parameters
+    ----------
+    freqs : array_like
+        Frequency values in Hz (length ``n_freqs``).
+    times : array_like
+        Time values in seconds (length ``n_times``).
+    power : array_like
+        Power matrix, shape ``(n_freqs, n_times)``.
+    band : GastricBand, optional
+        If provided, draws horizontal dashed lines at the band edges.
+    vmin : float, optional
+        Minimum value for the color scale.
+    vmax : float, optional
+        Maximum value for the color scale.
+    cmap : str, optional
+        Matplotlib colormap name. Default is ``"viridis"``.
+    ax : matplotlib.axes.Axes, optional
+        Axes to plot on. If None, creates a new figure.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    ax : matplotlib.axes.Axes
+
+    See Also
+    --------
+    gastropy.timefreq.morlet_tfr : Compute Morlet wavelet TFR.
+
+    Examples
+    --------
+    >>> from gastropy.timefreq import morlet_tfr
+    >>> from gastropy.viz import plot_tfr
+    >>> freqs, times, power = morlet_tfr(sig, sfreq=10.0,
+    ...     freqs=np.arange(0.02, 0.1, 0.005))
+    >>> fig, ax = plot_tfr(freqs, times, power)
+    """
+    freqs = np.asarray(freqs)
+    times = np.asarray(times)
+    power = np.asarray(power)
+
+    fig, ax = _get_or_create_ax(ax)
+
+    mesh = ax.pcolormesh(times, freqs, power, cmap=cmap, vmin=vmin, vmax=vmax, shading="auto")
+    fig.colorbar(mesh, ax=ax, label="Power")
+
+    if band is not None:
+        for edge in (band.f_lo, band.f_hi):
+            ax.axhline(edge, color="white", linestyle="--", linewidth=1, alpha=0.7)
+
+    _style_ax(ax, xlabel="Time (s)", ylabel="Frequency (Hz)", title="Time-Frequency Representation")
+
+    return fig, ax

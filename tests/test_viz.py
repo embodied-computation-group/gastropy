@@ -13,6 +13,7 @@ from gastropy.viz import (
     plot_egg_comprehensive,
     plot_egg_overview,
     plot_psd,
+    plot_tfr,
     plot_volume_phase,
 )
 
@@ -175,4 +176,43 @@ class TestPlotEggComprehensive:
         assert fig is not None
         import matplotlib.pyplot as plt
 
+        plt.close(fig)
+
+
+class TestPlotTfr:
+    """Tests for plot_tfr."""
+
+    def test_basic(self):
+        freqs = np.linspace(0.02, 0.1, 20)
+        times = np.arange(0, 300, 0.1)
+        power = np.random.default_rng(42).random((len(freqs), len(times)))
+        fig, ax = plot_tfr(freqs, times, power)
+        assert fig is not None
+        assert ax is not None
+        import matplotlib.pyplot as plt
+
+        plt.close(fig)
+
+    def test_with_band(self):
+        from gastropy.metrics import NORMOGASTRIA
+
+        freqs = np.linspace(0.02, 0.1, 20)
+        times = np.arange(0, 100, 0.1)
+        power = np.random.default_rng(42).random((len(freqs), len(times)))
+        fig, ax = plot_tfr(freqs, times, power, band=NORMOGASTRIA, cmap="hot")
+        assert fig is not None
+        import matplotlib.pyplot as plt
+
+        plt.close(fig)
+
+    def test_with_existing_ax(self):
+        import matplotlib.pyplot as plt
+
+        freqs = np.linspace(0.02, 0.1, 10)
+        times = np.arange(0, 50, 0.1)
+        power = np.random.default_rng(42).random((len(freqs), len(times)))
+        fig_ext, ax_ext = plt.subplots()
+        fig, ax = plot_tfr(freqs, times, power, ax=ax_ext)
+        assert fig is fig_ext
+        assert ax is ax_ext
         plt.close(fig)

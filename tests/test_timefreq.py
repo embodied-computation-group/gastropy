@@ -3,7 +3,7 @@
 import numpy as np
 
 from gastropy.metrics import BRADYGASTRIA, GASTRIC_BANDS, NORMOGASTRIA
-from gastropy.timefreq import band_decompose, multiband_analysis
+from gastropy.timefreq import band_decompose, morlet_tfr, multiband_analysis
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,3 +143,51 @@ class TestMultibandAnalysis:
         results = multiband_analysis(sig, sfreq=10.0)
         expected_names = {b.name for b in GASTRIC_BANDS}
         assert set(results.keys()) == expected_names
+
+
+# ---------------------------------------------------------------------------
+# morlet_tfr
+# ---------------------------------------------------------------------------
+
+
+class TestMorletTfr:
+    def test_output_shape(self):
+        """Output power shape should be (n_freqs, n_samples)."""
+        sig = _make_signal(freq_hz=0.05, duration=300.0)
+        target_freqs = np.arange(0.02, 0.1, 0.01)
+        freqs, times, power = morlet_tfr(sig, sfreq=10.0, freqs=target_freqs)
+        assert freqs.shape == target_freqs.shape
+        assert times.shape == (len(sig),)
+        assert power.shape == (len(target_freqs), len(sig))
+
+    def test_peak_at_signal_frequency(self):
+        """Peak power should be at the frequency of the input sinusoid."""
+        sig = _make_signal(freq_hz=0.05, noise=0.0, duration=300.0)
+        target_freqs = np.arange(0.02, 0.1, 0.005)
+        freqs, times, power = morlet_tfr(sig, sfreq=10.0, freqs=target_freqs)
+        # Mean power across time; peak frequency should be ~0.05 Hz
+        mean_power = power.mean(axis=1)
+        peak_freq = freqs[np.argmax(mean_power)]
+        assert abs(peak_freq - 0.05) < 0.01
+
+    def test_power_is_positive(self):
+        """All power values should be non-negative."""
+        sig = _make_signal(freq_hz=0.05, duration=100.0)
+        _, _, power = morlet_tfr(sig, sfreq=10.0, freqs=np.array([0.03, 0.05, 0.07]))
+        assert np.all(power >= 0)
+
+    def test_array_n_cycles(self):
+        """Should accept per-frequency n_cycles as an array."""
+        sig = _make_signal(freq_hz=0.05, duration=300.0)
+        target_freqs = np.array([0.03, 0.05, 0.07])
+        n_cycles = np.array([5, 7, 9])
+        freqs, times, power = morlet_tfr(sig, sfreq=10.0, freqs=target_freqs, n_cycles=n_cycles)
+        assert power.shape == (3, len(sig))
+
+    def test_times_match_duration(self):
+        """Times array should span the signal duration."""
+        sfreq = 10.0
+        duration = 200.0
+        sig = _make_signal(freq_hz=0.05, sfreq=sfreq, duration=duration)
+        _, times, _ = morlet_tfr(sig, sfreq=sfreq, freqs=np.array([0.05]))
+        assert abs(times[-1] - (duration - 1.0 / sfreq)) < 1e-6
