@@ -2,7 +2,7 @@
 
 import gzip
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -192,6 +192,14 @@ class TestParseBidsFilename:
         assert result["extension"] == ".json"
         assert result["suffix"] == "physio"
 
+    def test_entity_without_hyphen_warns(self):
+        with pytest.warns(UserWarning, match="no key-value separator"):
+            result = parse_bids_filename("sub-01_badpart_task-rest_physio.tsv.gz")
+        # The malformed part is skipped, valid entities still parsed
+        assert result["sub"] == "01"
+        assert result["task"] == "rest"
+        assert "badpart" not in result
+
 
 # ---------------------------------------------------------------------------
 # TestBrainvisionToBids
@@ -205,3 +213,69 @@ class TestBrainvisionToBids:
 
             with pytest.raises(ImportError, match="MNE"):
                 brainvision_to_bids("fake.vhdr", "out/", subject="01")
+
+    def test_happy_path_with_mocked_mne(self, tmp_path):
+        """Full conversion with a mock MNE Raw object."""
+        rng = np.random.default_rng(99)
+        fake_signal = rng.standard_normal((2, 50))
+
+        # Build a minimal mock that quacks like mne.io.Raw
+        mock_raw = MagicMock()
+        mock_raw.info = {"sfreq": 10.0}
+        mock_raw.get_data.return_value = fake_signal
+        mock_raw.ch_names = ["EGG1", "EGG2"]
+
+        mock_mne = MagicMock()
+        mock_mne.io.read_raw_brainvision.return_value = mock_raw
+
+        with patch.dict("sys.modules", {"mne": mock_mne}):
+            from importlib import reload
+
+            import gastropy.io._brainvision as bv_mod
+
+            reload(bv_mod)
+
+            result = bv_mod.brainvision_to_bids(
+                "fake.vhdr",
+                tmp_path,
+                subject="01",
+                session="001",
+                task="rest",
+            )
+
+        # Verify output files exist
+        assert result["tsv_path"].exists()
+        assert result["json_path"].exists()
+
+        # Verify BIDS directory structure: sub-01/ses-001/beh/
+        rel = result["tsv_path"].relative_to(tmp_path)
+        assert rel.parts[:3] == ("sub-01", "ses-001", "beh")
+
+        # Verify round-trip data fidelity
+        data = read_bids_physio(result["tsv_path"])
+        np.testing.assert_allclose(data["signal"], fake_signal, atol=1e-10)
+        assert data["columns"] == ["EGG1", "EGG2"]
+        assert data["sfreq"] == 10.0
+
+    def test_happy_path_no_session(self, tmp_path):
+        """Conversion without session entity omits ses- from path."""
+        mock_raw = MagicMock()
+        mock_raw.info = {"sfreq": 5.0}
+        mock_raw.get_data.return_value = np.ones((1, 20))
+        mock_raw.ch_names = ["EGG1"]
+
+        mock_mne = MagicMock()
+        mock_mne.io.read_raw_brainvision.return_value = mock_raw
+
+        with patch.dict("sys.modules", {"mne": mock_mne}):
+            from importlib import reload
+
+            import gastropy.io._brainvision as bv_mod
+
+            reload(bv_mod)
+
+            result = bv_mod.brainvision_to_bids("fake.vhdr", tmp_path, subject="02")
+
+        rel = result["tsv_path"].relative_to(tmp_path)
+        assert rel.parts[:2] == ("sub-02", "beh")
+        assert "ses-" not in str(rel)
