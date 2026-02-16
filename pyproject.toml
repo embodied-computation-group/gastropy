@@ -79,7 +79,7 @@ Issues = "https://github.com/embodied-computation-group/gastropy/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gastropy"]
-artifacts = ["gastropy/data/*.npz"]
+artifacts = ["gastropy/data/*_physio.tsv.gz", "gastropy/data/*_physio.json"]
 
 [tool.ruff]
 line-length = 120

@@ -95,10 +95,28 @@ for gastric-brain coupling analyses.
    resultant_length
    rayleigh_test
 
+IO --- BIDS Physio I/O
+----------------------
+
+Read and write BIDS-formatted peripheral physiology recordings,
+and convert from common acquisition formats.
+
+.. currentmodule:: gastropy
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   read_bids_physio
+   write_bids_physio
+   parse_bids_filename
+   brainvision_to_bids
+
 Data --- Sample Datasets
 ------------------------
 
 Load bundled example EGG recordings for tutorials and testing.
+Sample data is stored in BIDS physio format.
 ``fetch_fmri_bold`` downloads preprocessed fMRI data from a GitHub Release.
 
 .. currentmodule:: gastropy

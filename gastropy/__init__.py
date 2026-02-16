@@ -31,6 +31,7 @@ __version__ = "0.1.0"
 from .coupling import *  # noqa: F401, F403
 from .data import *  # noqa: F401, F403
 from .egg import *  # noqa: F401, F403
+from .io import *  # noqa: F401, F403
 from .metrics import *  # noqa: F401, F403
 from .signal import *  # noqa: F401, F403
 from .timefreq import *  # noqa: F401, F403
@@ -41,6 +42,5 @@ from .viz import *  # noqa: F401, F403
 # from .neuro import *
 
 # Modules not yet implemented — uncomment as they gain content
-# from .io import *
 # from .stats import *
 # from .misc import *

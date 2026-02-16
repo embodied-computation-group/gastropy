@@ -4,6 +4,11 @@ GastroPy Data Module
 
 Sample datasets for testing, tutorials, and benchmarking.
 
+Sample data is stored in BIDS physio format (``_physio.tsv.gz`` +
+``_physio.json`` sidecars).  Use :func:`load_egg` and
+:func:`load_fmri_egg` for quick access, or load files directly with
+:func:`gastropy.io.read_bids_physio`.
+
 Functions
 ---------
 load_fmri_egg
@@ -26,13 +31,22 @@ _DATA_DIR = Path(__file__).parent
 
 _FMRI_SESSIONS = ("0001", "0003", "0004", "0008")
 
+# BIDS filename mapping
+_BIDS_FILES = {
+    "egg_standalone": "sub-wolpert_task-rest_physio.tsv.gz",
+    "fmri_egg_session_0001": "sub-01_ses-0001_task-rest_physio.tsv.gz",
+    "fmri_egg_session_0003": "sub-01_ses-0003_task-rest_physio.tsv.gz",
+    "fmri_egg_session_0004": "sub-01_ses-0004_task-rest_physio.tsv.gz",
+    "fmri_egg_session_0008": "sub-01_ses-0008_task-rest_physio.tsv.gz",
+}
 
-def _load_npz(filename):
-    """Load an .npz file from the data directory."""
-    path = _DATA_DIR / filename
-    if not path.exists():
-        raise FileNotFoundError(f"Sample data file not found: {path}")
-    return dict(np.load(str(path), allow_pickle=False))
+
+def _load_bids(dataset_key):
+    """Load a bundled BIDS physio file and return raw dict."""
+    from ..io._bids import read_bids_physio
+
+    tsv_path = _DATA_DIR / _BIDS_FILES[dataset_key]
+    return read_bids_physio(tsv_path)
 
 
 def load_fmri_egg(session="0001"):
@@ -75,17 +89,36 @@ def load_fmri_egg(session="0001"):
         available = ", ".join(repr(s) for s in _FMRI_SESSIONS)
         raise ValueError(f"Unknown session {session!r}. Available: {available}")
 
-    raw = _load_npz(f"fmri_egg_session_{session}.npz")
+    raw = _load_bids(f"fmri_egg_session_{session}")
+
+    # Separate EGG channels from trigger column
+    columns = raw["columns"]
+    trigger_idx = columns.index("trigger")
+    egg_indices = [i for i, c in enumerate(columns) if c != "trigger"]
+
+    signal = raw["signal"][egg_indices]
+    ch_names = np.array([columns[i] for i in egg_indices])
+
+    # Use exact trigger times from JSON sidecar if available,
+    # otherwise reconstruct from the trigger column
+    if "TriggerTimesSeconds" in raw:
+        trigger_times = np.asarray(raw["TriggerTimesSeconds"], dtype=np.float64)
+    else:
+        trigger_col = raw["signal"][trigger_idx]
+        trigger_samples = np.where(trigger_col > 0.5)[0]
+        trigger_times = trigger_samples / raw["sfreq"]
+
+    duration_s = signal.shape[1] / raw["sfreq"]
 
     return {
-        "signal": raw["signal"],
-        "sfreq": float(raw["sfreq"]),
-        "ch_names": raw["ch_names"],
-        "trigger_times": raw["trigger_times"],
-        "tr": float(raw["tr"]),
-        "duration_s": float(raw["duration_s"]),
-        "source": str(raw["source"]),
-        "session": str(raw["session"]),
+        "signal": signal,
+        "sfreq": raw["sfreq"],
+        "ch_names": ch_names,
+        "trigger_times": trigger_times,
+        "tr": float(raw.get("TR", 1.856)),
+        "duration_s": duration_s,
+        "source": str(raw.get("Source", "semi_precision")),
+        "session": str(raw.get("Session", session)),
     }
 
 
@@ -122,14 +155,17 @@ def load_egg():
     >>> data["sfreq"]
     10.0
     """
-    raw = _load_npz("egg_standalone.npz")
+    raw = _load_bids("egg_standalone")
+    signal = raw["signal"]
+    ch_names = np.array(raw["columns"])
+    duration_s = signal.shape[1] / raw["sfreq"]
 
     return {
-        "signal": raw["signal"],
-        "sfreq": float(raw["sfreq"]),
-        "ch_names": raw["ch_names"],
-        "duration_s": float(raw["duration_s"]),
-        "source": str(raw["source"]),
+        "signal": signal,
+        "sfreq": raw["sfreq"],
+        "ch_names": ch_names,
+        "duration_s": duration_s,
+        "source": str(raw.get("Source", "wolpert_2020")),
     }
 
 
@@ -146,7 +182,8 @@ def list_datasets():
     >>> import gastropy as gp
     >>> gp.list_datasets()  # doctest: +NORMALIZE_WHITESPACE
     ['fmri_egg_session_0001', 'fmri_egg_session_0003',
-     'fmri_egg_session_0004', 'egg_standalone']
+     'fmri_egg_session_0004', 'fmri_egg_session_0008',
+     'egg_standalone']
     """
     datasets = [f"fmri_egg_session_{s}" for s in _FMRI_SESSIONS]
     datasets.append("egg_standalone")
