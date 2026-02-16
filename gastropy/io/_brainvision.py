@@ -86,7 +86,7 @@ def brainvision_to_bids(
     if session is not None:
         parts.append(f"ses-{session}")
     parts.append("beh")
-    bids_dir = output_dir / "/".join(parts)
+    bids_dir = output_dir.joinpath(*parts)
 
     # Build BIDS filename
     name_parts = [f"sub-{subject}"]

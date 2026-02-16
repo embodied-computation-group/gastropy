@@ -9,6 +9,7 @@ Only uses stdlib (``gzip``, ``json``) and numpy — no pybids dependency.
 
 import gzip
 import json
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -68,23 +69,16 @@ def read_bids_physio(tsv_path, json_path=None):
         if field not in metadata:
             raise ValueError(f"JSON sidecar missing required BIDS field: {field}")
 
-    # Read TSV (gzipped or plain)
+    # Read TSV (gzipped or plain) — BIDS physio: no header, tab-separated
     if tsv_path.suffix == ".gz":
         with gzip.open(tsv_path, "rt", encoding="utf-8") as f:
-            text = f.read()
+            data = np.loadtxt(f, delimiter="\t", dtype=np.float64)
     else:
-        with open(tsv_path, encoding="utf-8") as f:
-            text = f.read()
+        data = np.loadtxt(tsv_path, delimiter="\t", dtype=np.float64)
 
-    # Parse TSV → numpy array
-    # BIDS physio TSV: no header, tab-separated, one row per sample
-    lines = text.strip().split("\n")
-    n_samples = len(lines)
-    n_columns = len(metadata["Columns"])
-
-    data = np.empty((n_samples, n_columns), dtype=np.float64)
-    for i, line in enumerate(lines):
-        data[i] = [float(v) for v in line.split("\t")]
+    # Handle single-column files: loadtxt returns 1-D array
+    if data.ndim == 1:
+        data = data[:, np.newaxis]
 
     # Transpose to (n_channels, n_samples) — GastroPy convention
     signal = data.T
@@ -211,6 +205,14 @@ def parse_bids_filename(path):
         if "-" in part:
             key, value = part.split("-", 1)
             entities[key] = value
+        else:
+            warnings.warn(
+                f"Filename entity {part!r} has no key-value separator '-' "
+                f"and was skipped. BIDS entities should be formatted as "
+                f"'key-value' (e.g. 'sub-01').",
+                UserWarning,
+                stacklevel=2,
+            )
 
     entities["suffix"] = suffix
     entities["extension"] = extension
