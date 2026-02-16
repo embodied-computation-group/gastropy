@@ -1,0 +1,17 @@
+{
+    "SamplingFrequency": 10.0,
+    "StartTime": 0.0,
+    "Columns": [
+        "EGG1",
+        "EGG2",
+        "EGG3",
+        "EGG4",
+        "EGG5",
+        "EGG6",
+        "EGG7"
+    ],
+    "Source": "wolpert_2020",
+    "Description": "7-channel EGG from Wolpert et al. (2020), downsampled to 10 Hz",
+    "License": "CC BY-NC-SA 3.0",
+    "Citation": "Wolpert, N., Rebollo, I., & Tallon-Baudry, C. (2020). Psychophysiology, 57, e13599."
+}

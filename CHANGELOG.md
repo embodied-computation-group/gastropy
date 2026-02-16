@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`gastropy.io`** — BIDS peripheral physiology I/O module:
+  `read_bids_physio`, `write_bids_physio`, `parse_bids_filename` (stdlib +
+  numpy only), and `brainvision_to_bids` converter (optional MNE dependency).
+- 19 new tests for the IO module (read, write, round-trip, error handling,
+  BIDS filename parsing, BrainVision import guard).
+
+### Changed
+
+- **Sample data migrated from NPZ to BIDS physio format.** All bundled
+  datasets are now stored as `_physio.tsv.gz` + `_physio.json` sidecar pairs
+  following the BIDS peripheral physiology specification. The public API
+  (`load_egg`, `load_fmri_egg`, `list_datasets`) returns identical results.
+- `gastropy.data` internals now use `read_bids_physio` instead of `np.load`.
+- `pyproject.toml` build artifacts glob updated for BIDS file extensions.
+
+### Removed
+
+- Legacy NPZ sample data files (`egg_standalone.npz`,
+  `fmri_egg_session_*.npz`).
+
 ## [0.1.0] - 2026-02-16
 
 Initial public release of GastroPy.
