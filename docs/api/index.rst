@@ -99,7 +99,8 @@ IO --- BIDS Physio I/O
 ----------------------
 
 Read and write BIDS-formatted peripheral physiology recordings,
-and convert from common acquisition formats.
+and convert from common acquisition formats.  For MATLAB users, see
+``examples/matlab/egg_to_bids.m``.
 
 .. currentmodule:: gastropy
 

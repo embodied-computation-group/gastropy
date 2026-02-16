@@ -29,6 +29,44 @@ experimenting immediately — no external downloads needed.
    fmri = gp.load_fmri_egg(session="0001")
    print(fmri["signal"].shape, fmri["trigger_times"].shape)
 
+Importing Your Own Data
+-----------------------
+
+GastroPy uses the `BIDS peripheral physiology format
+<https://bids-specification.readthedocs.io/en/stable/modality-specific-files/physiological-and-other-continuous-recordings.html>`_
+as its canonical data format: a gzip-compressed TSV (``_physio.tsv.gz``)
+paired with a JSON sidecar (``_physio.json``).
+
+**From Python** -- use ``gastropy.io`` to read and write BIDS physio files:
+
+.. code-block:: python
+
+   from gastropy.io import read_bids_physio, write_bids_physio
+
+   # Write your own data
+   write_bids_physio(
+       "sub-01_task-rest_physio.tsv.gz",
+       signal=my_signal,       # (n_channels, n_samples) array
+       sfreq=10.0,
+       columns=["EGG1", "EGG2", "EGG3"],
+   )
+
+   # Read it back
+   data = read_bids_physio("sub-01_task-rest_physio.tsv.gz")
+   print(data["signal"].shape, data["sfreq"])
+
+**From BrainVision** -- convert ``.vhdr`` files directly (requires MNE):
+
+.. code-block:: python
+
+   from gastropy.io import brainvision_to_bids
+
+   brainvision_to_bids("recording.vhdr", output_dir="bids/", subject="01")
+
+**From MATLAB** -- see ``examples/matlab/egg_to_bids.m`` for a
+self-contained script that writes BIDS-compliant files from any MATLAB
+array.  No toolbox dependencies beyond base MATLAB (R2016b+).
+
 Processing an EGG Signal
 ------------------------
 
