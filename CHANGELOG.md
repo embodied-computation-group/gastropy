@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   numpy only), and `brainvision_to_bids` converter (optional MNE dependency).
 - 19 new tests for the IO module (read, write, round-trip, error handling,
   BIDS filename parsing, BrainVision import guard).
+- Example MATLAB BIDSifier script (`examples/matlab/egg_to_bids.m`) for
+  converting EGG recordings to BIDS physio format without Python.
+- "Importing Your Own Data" section in Getting Started docs.
 
 ### Changed
 
