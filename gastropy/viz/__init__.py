@@ -26,6 +26,7 @@ from .plotting import (
     plot_egg_comprehensive,
     plot_egg_overview,
     plot_psd,
+    plot_tfr,
     plot_volume_phase,
 )
 
@@ -36,6 +37,7 @@ __all__ = [
     "plot_artifacts",
     "plot_volume_phase",
     "plot_egg_comprehensive",
+    "plot_tfr",
     "plot_coupling_map",
     "plot_glass_brain",
 ]

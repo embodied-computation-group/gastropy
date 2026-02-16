@@ -11,8 +11,10 @@ summary metrics for each band.
 """
 
 from .decompose import band_decompose, multiband_analysis
+from .tfr import morlet_tfr
 
 __all__ = [
     "band_decompose",
     "multiband_analysis",
+    "morlet_tfr",
 ]
