@@ -3,14 +3,15 @@
 GastroPy bundles small sample datasets for testing and tutorials. These files
 have separate licenses from the GastroPy source code (MIT).
 
-## fMRI-EGG data (`fmri_egg_session_*.npz`)
+## fMRI-EGG data (`sub-01_ses-*_task-rest_physio.tsv.gz`)
 
-8-channel electrogastrography recorded during fMRI (resting state).
+8-channel electrogastrography recorded during fMRI (resting state),
+stored in BIDS physio format with companion JSON sidecars.
 Collected by Micah Allen as part of the semi_precision study.
 
 **License:** MIT (same as GastroPy)
 
-## Standalone EGG data (`egg_standalone.npz`)
+## Standalone EGG data (`sub-wolpert_task-rest_physio.tsv.gz`)
 
 7-channel electrogastrography recorded with a BioSemi amplifier.
 Originally distributed as example data in the EGG_Scripts repository.
