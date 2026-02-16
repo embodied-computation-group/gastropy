@@ -16,6 +16,7 @@ Visualization
    plot_artifacts
    plot_volume_phase
    plot_egg_comprehensive
+   time_frequency
    brain_maps
 
 Processing
