@@ -50,6 +50,9 @@ def morlet_tfr(data, sfreq, freqs, n_cycles=7):
     n_samples = len(data)
     times = np.arange(n_samples) / sfreq
 
+    # Remove mean to reduce DC edge effects
+    data = data - np.mean(data)
+
     # Broadcast n_cycles to per-frequency array
     n_cycles = np.broadcast_to(np.asarray(n_cycles, dtype=float), freqs.shape)
 
@@ -57,7 +60,13 @@ def morlet_tfr(data, sfreq, freqs, n_cycles=7):
 
     for i, (freq, nc) in enumerate(zip(freqs, n_cycles, strict=True)):
         wavelet = _make_morlet(freq, sfreq, nc)
-        analytic = fftconvolve(data, wavelet, mode="same")
+        half_len = len(wavelet) // 2
+
+        # Reflect-pad to avoid edge artifacts from zero-padding
+        padded = np.pad(data, half_len, mode="reflect")
+        analytic = fftconvolve(padded, wavelet, mode="same")
+        analytic = analytic[half_len : half_len + n_samples]
+
         power[i] = np.abs(analytic) ** 2
 
     return freqs, times, power

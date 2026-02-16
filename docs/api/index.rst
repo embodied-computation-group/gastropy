@@ -75,6 +75,7 @@ Decompose signals across gastric frequency bands.
 
    band_decompose
    multiband_analysis
+   morlet_tfr
 
 Coupling --- Phase Coupling Analysis
 -------------------------------------
@@ -128,6 +129,7 @@ Plotting functions for EGG signals and gastric rhythm analysis.
    plot_artifacts
    plot_volume_phase
    plot_egg_comprehensive
+   plot_tfr
    plot_coupling_map
    plot_glass_brain
 
