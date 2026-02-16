@@ -1,0 +1,948 @@
+\documentclass[12pt]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+
+% --- Code listing style ---
+\definecolor{codebg}{gray}{0.96}
+\definecolor{codegreen}{rgb}{0.0,0.5,0.0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+
+\lstdefinestyle{python}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\small\ttfamily,
+  keywordstyle=\color{codepurple}\bfseries,
+  stringstyle=\color{codegreen},
+  commentstyle=\color{codegray}\itshape,
+  breaklines=true,
+  frame=single,
+  framerule=0pt,
+  xleftmargin=1em,
+  xrightmargin=1em,
+  aboveskip=1em,
+  belowskip=1em,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  morekeywords={as, with, True, False, None},
+}
+
+\lstset{style=python}
+
+% --- Metadata ---
+\title{GastroPy: An Open-Source Python Toolbox for Electrogastrography
+  Signal Processing and Gastric-Brain Coupling Analysis}
+
+\author{
+  Micah Allen\textsuperscript{1,2,*},
+  Daniel Kluger\textsuperscript{3},
+  Leah Banellis\textsuperscript{1,2},
+  Ignacio Rebollo\textsuperscript{4},\\
+  Nils Kroemer\textsuperscript{5},
+  Edwin Dalmaijer\textsuperscript{6}\\[1em]
+  \small\textsuperscript{1}Center of Functionally Integrative Neuroscience,
+    Aarhus University, Denmark\\
+  \small\textsuperscript{2}Cambridge Psychiatry,
+    University of Cambridge, United Kingdom\\
+  \small\textsuperscript{3}Institute of Biomagnetism and Biosignal Analysis,
+    University of Muenster, Germany\\
+  \small\textsuperscript{4}German Institute for Human Nutrition,
+    Potsdam, Germany\\
+  \small\textsuperscript{5}Department of Psychiatry and Psychotherapy,
+    University of Tuebingen, Germany\\
+  \small\textsuperscript{6}School of Psychology,
+    University of Leeds, United Kingdom\\[0.5em]
+  \small\textsuperscript{*}Corresponding author: \texttt{micah@cfin.au.dk}
+}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+Electrogastrography (EGG) is a non-invasive technique for recording gastric
+myoelectrical activity via cutaneous abdominal electrodes. Recent advances in
+concurrent EGG-fMRI have revealed phase synchrony between the gastric rhythm
+and resting-state brain networks, opening a new window into brain-body
+interactions, interoception, and mental health. Despite growing interest, the
+field lacks a dedicated, open-source software toolkit for EGG analysis in
+Python. Here we present GastroPy, a modular Python package for EGG signal
+processing and gastric-brain coupling analysis. GastroPy provides a complete
+analysis pipeline spanning spectral analysis, bandpass filtering,
+instantaneous phase extraction, cycle-level metrics, multi-channel selection,
+phase-based artifact detection, time-frequency decomposition, and
+phase-locking value (PLV) computation. A dedicated neuroimaging sub-module
+supports scanner trigger alignment, confound regression, voxelwise BOLD phase
+extraction, and whole-brain PLV map generation for concurrent EGG-fMRI data.
+The package is built on NumPy and SciPy with optional MNE-Python and nilearn
+\citep{Abraham2014} integration, features a layered architecture that separates core signal
+processing from neuroimaging workflows, and includes bundled sample data for
+tutorials and testing. We describe GastroPy's design philosophy, demonstrate
+its capabilities through two worked examples (standalone EGG processing and
+fMRI-EGG coupling), and discuss its role in the emerging ecosystem of
+brain-body analysis tools. GastroPy is freely available under the MIT license
+at \url{https://github.com/embodied-computation-group/gastropy}.
+\end{abstract}
+
+\onehalfspacing
+
+% ============================================================================
+% 1. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+
+The stomach generates a continuous electrical slow wave at approximately 0.05
+Hz (3 cycles per minute) that originates in the interstitial cells of Cajal
+(ICC) located in the myenteric plexus of the gastric corpus, and propagates
+distally through the antrum to coordinate gastric motility
+\citep{Koch2004, ChenMcCallum1991}. This omnipresent rhythm---present in both
+fasting and postprandial states---serves as the pacemaker signal that triggers
+smooth muscle contraction and governs the mixing and propulsion of gastric
+contents. The gastric slow wave can be recorded non-invasively using
+electrogastrography (EGG), a technique in which cutaneous electrodes placed on
+the abdominal skin surface capture the far-field projection of the underlying
+myoelectrical activity \citep{Chang2005, Yin2013}. The resulting signal,
+though weak in amplitude and susceptible to respiratory, cardiac, and motion
+artifacts, provides a continuous measure of gastric rhythmicity that can be
+characterized through spectral analysis, phase extraction, and cycle-level
+metrics.
+
+Clinical EGG has been used for decades to assess gastric dysrhythmias
+(bradygastria, tachygastria), gastroparesis, functional dyspepsia, and other
+motility disorders \citep{Koch2004}. Standard clinical parameters include the
+dominant frequency, percentage of recording time in the normal 2--4 cycles per
+minute (cpm) range, the power ratio between pre- and postprandial recordings,
+and the instability coefficient quantifying rhythm regularity. However, the
+technique has recently attracted renewed interest from the neuroscience and
+psychophysiology communities, driven by discoveries of gastric-brain
+interactions that may have implications far beyond gastroenterology.
+
+A landmark study by \citet{Rebollo2018} demonstrated that the gastric rhythm
+is phase-synchronized with resting-state fMRI activity in a distributed
+``gastric network'' spanning somatosensory, motor, visual, and parietal
+cortices. Using concurrent EGG and fMRI in healthy participants, they showed
+that the phase of the gastric slow wave predicts fluctuations in the BOLD
+signal at specific brain regions, with a precise temporal sequence of
+activations within each gastric cycle. This finding was subsequently replicated
+and extended by \citet{Choe2021}, who used spatial independent component
+analysis (ICA) to show that at least three resting-state networks---cerebellar,
+dorsal somatosensory-motor, and default mode---exhibit significant
+phase-locking with the gastric basal electrical rhythm. \citet{Levakov2023}
+further characterized the reliability and confound sensitivity of
+gastric-brain coupling measures, demonstrating that head motion and
+non-grey-matter signals can substantially inflate the spatial extent of the
+gastric network if not properly controlled. Most recently,
+\citet{Banellis2025} demonstrated that frontoparietal brain coupling to the
+gastric rhythm indexes a dimensional signature of mental health, with
+cross-validated machine learning revealing that increased gastric-brain
+coupling in frontoparietal regions predicts poorer anxiety, depression, stress,
+and well-being across 243 participants.
+
+Alongside these neuroscience applications, \citet{Wolpert2020} established
+practical recording and analysis guidelines for EGG in psychophysiology
+research, providing normative data from a large healthy sample (N = 117) and a
+semi-automated MATLAB analysis pipeline that has become a de facto standard for
+EGG data processing. Their pipeline includes electrode placement
+recommendations, signal quality assessment criteria, and a multi-step analysis
+workflow from raw recording to phase and power extraction. Wearable EGG devices
+have also been explored for affect detection and emotion regulation
+applications \citep{Vujic2020}, demonstrating that gastric signals carry
+affective information complementary to other autonomic measures and further
+expanding the potential user base for EGG analysis tools.
+
+Despite this growth, the field currently lacks a dedicated, open-source Python
+package for EGG analysis. Researchers typically rely on custom MATLAB scripts,
+ad hoc Python code, or general-purpose biosignal toolkits that were not
+designed for the unique characteristics of the gastric slow wave. NeuroKit2
+\citep{Makowski2021} provides broad biosignal processing capabilities with
+basic EGG support but lacks multi-channel selection, gastric-brain coupling
+pipelines, and EGG-specific artifact detection. MNE-Python
+\citep{Gramfort2013} is the de facto standard for EEG and MEG analysis but
+does not target the low-frequency range occupied by the gastric rhythm. Domain-specific
+biosignal packages such as Systole \citep{Legrand2020} and HeartPy
+\citep{vanGent2019} demonstrate the value of focused toolkits but address
+cardiac rather than gastric signals. MATLAB toolboxes such as the StomachBrain
+pipeline \citep{Banellis2025} are not accessible to the growing number of
+researchers working in Python, and their monolithic architectures limit
+component reusability.
+
+Here we present GastroPy, an open-source Python package that provides a
+complete, modular toolkit for EGG signal processing and gastric-brain coupling
+analysis. GastroPy is designed around three principles: (1) domain specificity,
+with frequency bands, filtering parameters, and artifact criteria tailored to
+the gastric slow wave; (2) modularity, with a layered architecture that
+separates core DSP from neuroimaging-specific logic; and (3) interoperability,
+with all functions operating on standard NumPy arrays and pandas DataFrames. In
+what follows, we describe the package's design philosophy and architecture,
+demonstrate its capabilities through two worked examples, and discuss its role
+in the emerging ecosystem of brain-body analysis tools.
+
+% ============================================================================
+% 2. DESIGN PHILOSOPHY
+% ============================================================================
+\section{Design Philosophy and Architecture}
+
+\subsection{Guiding Principles}
+
+GastroPy's design is guided by four principles drawn from best practices in
+scientific Python software development, particularly the approaches pioneered
+by NeuroKit2 \citep{Makowski2021} and MNE-Python \citep{Gramfort2013}:
+
+\begin{enumerate}
+  \item \textbf{Domain-specific defaults with full parameter control.} All
+    functions expose sensible defaults for gastric rhythm analysis (e.g.,
+    normogastric band of 0.033--0.067 Hz, 200-second PSD windows) while
+    allowing complete parameter customization for advanced users.
+  \item \textbf{Layered dependency isolation.} Core signal processing depends
+    only on NumPy \citep{Harris2020}, SciPy \citep{Virtanen2020}, pandas
+    \citep{McKinney2010}, and matplotlib \citep{Hunter2007}. Neuroimaging
+    features (MNE-Python, nilearn, nibabel) are optional extras, keeping the
+    base install lightweight.
+  \item \textbf{Composable, flat API.} Each function operates on NumPy arrays
+    or pandas DataFrames and can be used independently or composed into
+    pipelines. High-level convenience functions aggregate lower-level
+    operations but never hide them.
+  \item \textbf{Reproducibility by default.} All random operations (e.g.,
+    surrogate generation) accept explicit seeds. Bundled sample data and
+    comprehensive documentation ensure that analyses can be reproduced across
+    labs and platforms.
+\end{enumerate}
+
+\subsection{Package Architecture}
+
+GastroPy is organized into seven modules arranged in two layers
+(Table~\ref{tab:modules}).
+
+\begin{table}[htbp]
+\centering
+\caption{GastroPy module organization. Core modules require only NumPy, SciPy,
+  pandas, and matplotlib. The neuroimaging layer requires optional dependencies
+  (MNE-Python, nilearn, nibabel), installable via
+  \texttt{pip install gastropy[neuro]}.}
+\label{tab:modules}
+\begin{tabular}{lll}
+\toprule
+\textbf{Layer} & \textbf{Module} & \textbf{Description} \\
+\midrule
+Core & \texttt{gastropy.signal} & PSD, filtering, phase extraction, resampling \\
+     & \texttt{gastropy.metrics} & Band power, instability, cycle statistics \\
+     & \texttt{gastropy.egg} & High-level pipeline, channel selection \\
+     & \texttt{gastropy.timefreq} & Narrowband decomposition, Morlet wavelets \\
+     & \texttt{gastropy.coupling} & PLV, circular statistics, surrogates \\
+     & \texttt{gastropy.viz} & Publication-ready plotting \\
+     & \texttt{gastropy.data} & Bundled sample datasets \\
+\midrule
+Neuro & \texttt{gastropy.neuro.fmri} & Trigger alignment, BOLD phases, PLV maps \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The \textbf{core layer} handles all EGG-specific signal processing.
+\texttt{gastropy.signal} provides low-level DSP primitives: power spectral
+density via Welch's method, FIR and IIR bandpass filter design and application,
+Hilbert-based instantaneous phase extraction, signal resampling, cycle edge
+detection, and phase-based artifact detection. \texttt{gastropy.metrics}
+computes gastric rhythm metrics including band power (peak frequency, maximum
+power, proportional power), the instability coefficient
+\citep{Koch2004}, cycle duration statistics, proportion of normogastric
+cycles, and automated quality assessment. \texttt{gastropy.egg} composes these
+into high-level workflows: \texttt{egg\_process} runs a complete
+filter-phase-metrics pipeline in a single call, while
+\texttt{select\_best\_channel} identifies the channel with the strongest
+normogastric rhythm in multi-electrode recordings.
+\texttt{gastropy.timefreq} provides narrowband decomposition via per-band
+filtering and Morlet wavelet time-frequency representations.
+\texttt{gastropy.coupling} implements modality-agnostic circular statistics
+(circular mean, resultant length, Rayleigh test) and phase-locking value
+computation with surrogate-based z-scoring via circular time-shifting.
+\texttt{gastropy.viz} provides plotting functions for every analysis stage,
+from PSD plots with gastric band shading to comprehensive multi-panel overview
+figures.
+
+The \textbf{neuroimaging layer} extends the core with fMRI-specific
+functionality. \texttt{gastropy.neuro.fmri} provides scanner trigger
+detection, volume window creation, per-volume phase extraction, transient
+volume removal, confound regression via GLM, voxelwise BOLD phase extraction
+at the gastric frequency, and whole-brain PLV map generation with
+surrogate-based null distributions. This module implements the methodology
+described in \citet{Banellis2025}.
+
+\subsection{Gastric Frequency Bands}
+
+GastroPy defines three standard gastric frequency bands as named constants in
+\texttt{gastropy.metrics}:
+
+\begin{itemize}
+  \item \textbf{Bradygastria}: 0.02--0.03 Hz (1.2--1.8 cycles per minute)
+  \item \textbf{Normogastria}: 0.033--0.067 Hz (2--4 cycles per minute)
+  \item \textbf{Tachygastria}: 0.07--0.17 Hz (4.2--10.2 cycles per minute)
+\end{itemize}
+
+These bands follow established clinical conventions
+\citep{Koch2004, Chang2005, Yin2013} and serve as defaults throughout the
+package while remaining fully configurable via the \texttt{GastricBand}
+named tuple.
+
+% ============================================================================
+% 3. KEY ALGORITHMS
+% ============================================================================
+\section{Key Algorithms and Methods}
+
+This section describes the core signal processing and statistical methods
+implemented in GastroPy.
+
+\subsection{Spectral Analysis}
+
+GastroPy computes power spectral density using Welch's method with a default
+window length of 200 seconds, chosen to provide sufficient frequency
+resolution in the gastric range (0.005 Hz resolution) while allowing multiple
+windows for variance reduction in typical recording durations (15--30 minutes).
+Users can control the overlap fraction (default 25\%) via the
+\texttt{overlap} parameter. The resulting PSD is used for channel selection,
+peak frequency identification, and band power computation.
+
+Band power metrics are computed by integrating the PSD within each gastric
+band. For each band, GastroPy reports the peak frequency (Hz), maximum and
+mean power, proportional power (band power divided by total power in the
+0.01--0.2 Hz analysis range), and the mean power ratio (band power relative to
+out-of-band power). These metrics follow the conventions established in the
+clinical EGG literature \citep{Koch2004, Chang2005}.
+
+\subsection{Bandpass Filtering}
+
+GastroPy supports both FIR and IIR bandpass filtering with zero-phase
+application via \texttt{scipy.signal.filtfilt}. The default FIR filter uses an
+adaptive tap count computed from the filter order, sampling frequency, and a
+configurable transition width (default 20\% of the passband). IIR filtering
+uses a Butterworth design with configurable order (default 4). The zero-phase
+application ensures no phase distortion, which is critical for subsequent
+Hilbert-based phase extraction.
+
+For the default normogastric band (0.033--0.067 Hz), the filter passband
+corresponds to cycle durations of 15--30 seconds. The transition width
+parameter controls the sharpness of the roll-off and can be adjusted to balance
+between frequency selectivity and temporal ringing artifacts.
+
+\subsection{Phase Extraction and Cycle Detection}
+
+Instantaneous phase is extracted via the Hilbert transform applied to the
+bandpass-filtered signal. The analytic signal $z(t) = x(t) + i\hat{x}(t)$,
+where $\hat{x}(t)$ is the Hilbert transform of $x(t)$, yields the
+instantaneous phase as $\phi(t) = \arg(z(t))$ and the instantaneous amplitude
+as $A(t) = |z(t)|$. The phase is wrapped to $[-\pi, \pi)$.
+
+Gastric cycles are detected by identifying phase wrapping events (transitions
+from $+\pi$ to $-\pi$). The duration of each cycle is computed as the time
+between consecutive wrapping events. Cycle-level metrics include the mean and
+standard deviation of cycle durations, the proportion of cycles falling within
+the normogastric range (15--30 seconds by default), and the instability
+coefficient (IC), defined as the standard deviation of cycle durations divided
+by the mean:
+\begin{equation}
+  \text{IC} = \frac{\sigma_{\text{cycle}}}{\mu_{\text{cycle}}}
+\end{equation}
+Lower IC values indicate a more regular gastric rhythm. GastroPy also provides
+automated quality assessment based on configurable thresholds for minimum cycle
+count, rhythm stability, and normogastric dominance.
+
+\subsection{Artifact Detection}
+
+GastroPy implements phase-based artifact detection following the approach of
+\citet{Wolpert2020}. Two types of artifacts are identified at the cycle level:
+(1) \emph{non-monotonic phase} cycles, where the instantaneous phase does not
+progress monotonically within a cycle (indicating loss of a stable oscillation),
+and (2) \emph{duration outlier} cycles, where the cycle duration exceeds a
+configurable threshold (default: 3 standard deviations from the mean).
+Artifact cycles are flagged with a boolean mask that can be used to exclude
+contaminated data from subsequent analyses.
+
+\subsection{Phase-Locking Value}
+
+The phase-locking value (PLV) quantifies the consistency of the phase
+difference between two signals across time \citep{Rebollo2018}. For two phase
+time series $\phi_a(t)$ and $\phi_b(t)$, the PLV is defined as:
+\begin{equation}
+  \text{PLV} = \left| \frac{1}{N} \sum_{t=1}^{N} e^{i(\phi_a(t) - \phi_b(t))} \right|
+\end{equation}
+where $N$ is the number of time points. PLV ranges from 0 (no phase
+consistency) to 1 (perfect phase-locking). GastroPy also computes the complex
+PLV, which preserves the preferred phase lag direction.
+
+Statistical significance of observed PLV values is assessed using a
+surrogate-based approach. Surrogate distributions are generated by circularly
+shifting one phase time series by random offsets (drawn uniformly from the
+full signal length, with a configurable buffer to avoid trivially similar
+shifts). The empirical PLV is then z-scored against the surrogate distribution:
+\begin{equation}
+  z = \frac{\text{PLV}_{\text{emp}} - \text{median}(\text{PLV}_{\text{surr}})}
+           {\text{MAD}(\text{PLV}_{\text{surr}})}
+\end{equation}
+where MAD is the median absolute deviation. This non-parametric approach avoids
+distributional assumptions and is robust to non-stationarity in the signals.
+
+\subsection{Voxelwise BOLD Phase Extraction}
+
+For fMRI coupling analysis, GastroPy extracts the instantaneous phase of BOLD
+signal fluctuations at the gastric frequency for each brain voxel. The BOLD
+time series (after confound regression and z-scoring) is bandpass-filtered at
+the participant's peak gastric frequency using either an IIR Butterworth filter
+(default) or a FIR filter, with a configurable half-width at half-maximum
+(HWHM, default 0.015 Hz) defining the filter bandwidth. The Hilbert transform
+is then applied to extract the instantaneous phase. Transient volumes at the
+beginning and end of the filtered time series are removed (default: 21 volumes
+each) to avoid edge artifacts from the filtering and Hilbert transform
+operations.
+
+% ============================================================================
+% 4. INSTALLATION
+% ============================================================================
+\section{Installation and Dependencies}
+
+GastroPy is available on the Python Package Index (PyPI) and can be installed
+with pip:
+
+\begin{lstlisting}
+pip install gastropy
+\end{lstlisting}
+
+This installs the core package with its minimal dependencies: NumPy, SciPy,
+pandas, and matplotlib. For neuroimaging workflows that require MNE-Python,
+nilearn, and nibabel:
+
+\begin{lstlisting}
+pip install gastropy[neuro]
+\end{lstlisting}
+
+For development, including testing and documentation tools:
+
+\begin{lstlisting}
+pip install gastropy[dev]
+\end{lstlisting}
+
+GastroPy requires Python 3.10 or later and is tested on Linux, macOS, and
+Windows via continuous integration. The package uses Hatch as its build system,
+Ruff for linting and formatting, and Sphinx with the sphinx-book-theme for
+documentation, which is hosted at
+\url{https://embodied-computation-group.github.io/gastropy}.
+
+% ============================================================================
+% 4. EXAMPLE 1: STANDALONE EGG
+% ============================================================================
+\section{Example 1: Standalone EGG Processing}
+
+This example demonstrates a complete EGG analysis workflow using a standalone
+recording from the \citet{Wolpert2020} normative dataset, bundled with
+GastroPy.
+
+\subsection{Loading Data}
+
+GastroPy includes several sample datasets accessible via the
+\texttt{gastropy.data} module. The standalone EGG recording contains 7 channels
+sampled at 10 Hz from a healthy participant:
+
+\begin{lstlisting}
+import gastropy as gp
+
+# Load standalone EGG recording (Wolpert et al., 2020)
+rec = gp.load_egg()
+signal = rec["signal"]   # shape: (n_channels, n_samples)
+sfreq = rec["sfreq"]     # 10.0 Hz
+
+print(f"Channels: {rec['ch_names']}")
+print(f"Duration: {rec['duration_s']:.0f} s")
+\end{lstlisting}
+
+\subsection{Channel Selection}
+
+For multi-channel recordings, GastroPy identifies the channel with the
+strongest normogastric peak using spectral analysis:
+
+\begin{lstlisting}
+best_idx, peak_freq, freqs, psd = gp.select_best_channel(
+    signal, sfreq
+)
+print(f"Best channel: {rec['ch_names'][best_idx]}")
+print(f"Peak frequency: {peak_freq:.4f} Hz "
+      f"({peak_freq * 60:.1f} cpm)")
+\end{lstlisting}
+
+The channel selection algorithm computes the PSD for each channel using
+Welch's method, identifies spectral peaks within the normogastric band, and
+selects the channel whose peak has the highest power. The PSD can be
+visualized with gastric band shading:
+
+\begin{lstlisting}
+fig, ax = gp.plot_psd(
+    freqs, psd,
+    band=gp.NORMOGASTRIA,
+    ch_names=rec["ch_names"],
+    best_idx=best_idx,
+    peak_freq=peak_freq,
+)
+\end{lstlisting}
+
+\subsection{Signal Processing Pipeline}
+
+The \texttt{egg\_process} function runs the full analysis pipeline on the
+selected channel: bandpass filtering in the normogastric band, Hilbert-based
+instantaneous phase and amplitude extraction, cycle detection, and metric
+computation:
+
+\begin{lstlisting}
+signals_df, info = gp.egg_process(
+    signal[best_idx], sfreq
+)
+
+# signals_df columns: raw, filtered, phase, amplitude
+# info dict contains metrics:
+print(f"Cycles detected: {info['n_cycles']}")
+print(f"Mean cycle duration: "
+      f"{info['mean_cycle_dur_s']:.1f} s")
+print(f"Instability coefficient: "
+      f"{info['instability_coefficient']:.3f}")
+print(f"Proportion normogastric: "
+      f"{info['proportion_normogastric']:.1%}")
+\end{lstlisting}
+
+The returned \texttt{signals\_df} DataFrame contains aligned time series of the
+raw signal, bandpass-filtered signal, instantaneous phase (in radians), and
+analytic amplitude. The \texttt{info} dictionary contains all computed metrics,
+including the instability coefficient \citep{Koch2004}, cycle duration
+statistics, band power, and an automated quality assessment flag.
+
+\subsection{Artifact Detection}
+
+Phase-based artifact detection, following the approach of
+\citet{Wolpert2020}, identifies cycles with non-monotonic phase progression or
+anomalous durations:
+
+\begin{lstlisting}
+times = signals_df.index.values / sfreq
+artifact_info = gp.detect_phase_artifacts(
+    signals_df["phase"].values, times
+)
+
+print(f"Artifact cycles: "
+      f"{artifact_info['n_artifact_cycles']}")
+
+fig, ax = gp.plot_artifacts(
+    signals_df["phase"].values,
+    times,
+    artifact_info,
+)
+\end{lstlisting}
+
+\subsection{Visualization}
+
+GastroPy provides several plotting functions for visualizing results. The
+\texttt{plot\_egg\_overview} function generates a four-panel figure showing the
+raw signal, filtered signal, instantaneous phase, and amplitude envelope:
+
+\begin{lstlisting}
+fig, axes = gp.plot_egg_overview(signals_df, sfreq)
+\end{lstlisting}
+
+Cycle duration distributions can be visualized as histograms with the
+normogastric range highlighted:
+
+\begin{lstlisting}
+fig, ax = gp.plot_cycle_histogram(
+    info["cycle_durations_s"]
+)
+\end{lstlisting}
+
+\subsection{Time-Frequency Analysis}
+
+For more detailed spectral dynamics, the \texttt{multiband\_analysis} function
+decomposes the signal across all three gastric bands simultaneously:
+
+\begin{lstlisting}
+bands = gp.multiband_analysis(signal[best_idx], sfreq)
+
+for name, result in bands.items():
+    bp = result["band_power"]
+    print(f"{name}: peak {bp['peak_freq_hz']:.4f} Hz, "
+          f"power {bp['prop_power']:.1%}")
+\end{lstlisting}
+
+% ============================================================================
+% 5. EXAMPLE 2: fMRI COUPLING
+% ============================================================================
+\section{Example 2: Gastric-Brain Coupling with fMRI}
+
+This example demonstrates the gastric-brain coupling pipeline using concurrent
+EGG-fMRI data, implementing the methodology described in
+\citet{Banellis2025}. The workflow proceeds from EGG phase extraction through
+voxelwise BOLD phase computation to whole-brain PLV mapping.
+
+\subsection{Loading Concurrent EGG-fMRI Data}
+
+GastroPy bundles three sessions of concurrent EGG-fMRI recordings, each
+containing 8-channel EGG at 10 Hz with scanner trigger timing:
+
+\begin{lstlisting}
+import gastropy as gp
+from gastropy.neuro import fmri
+import numpy as np
+
+# Load EGG recording with trigger info
+rec = gp.load_fmri_egg(session="0001")
+signal = rec["signal"]   # (8, n_samples)
+sfreq = rec["sfreq"]     # 10.0 Hz
+tr = rec["tr"]            # 1.856 s
+
+# Select best channel and get peak frequency
+best_idx, peak_freq, freqs, psd = (
+    gp.select_best_channel(signal, sfreq)
+)
+\end{lstlisting}
+
+\subsection{EGG Phase Extraction}
+
+The EGG signal is bandpass-filtered and the instantaneous phase is extracted
+via the Hilbert transform:
+
+\begin{lstlisting}
+# Process EGG on best channel
+signals_df, info = gp.egg_process(
+    signal[best_idx], sfreq
+)
+egg_phase = signals_df["phase"].values
+\end{lstlisting}
+
+\subsection{Volume Windowing and Phase-per-Volume}
+
+Scanner trigger times are used to create volume windows that map each fMRI
+volume to the corresponding EGG time points. The mean EGG phase within each
+volume window is then computed:
+
+\begin{lstlisting}
+# Create volume windows from trigger onsets
+trigger_times = rec["trigger_times"]
+n_volumes = len(trigger_times)
+windows = fmri.create_volume_windows(
+    trigger_times, tr, n_volumes
+)
+
+# Extract analytic signal for phase computation
+_, analytic = gp.instantaneous_phase(
+    gp.apply_bandpass(signal[best_idx], sfreq,
+                      gp.NORMOGASTRIA.low,
+                      gp.NORMOGASTRIA.high)
+)
+
+# Compute mean phase per fMRI volume
+phase_per_vol = fmri.phase_per_volume(
+    analytic, windows
+)
+\end{lstlisting}
+
+\subsection{BOLD Preprocessing and Phase Extraction}
+
+Preprocessed BOLD data (e.g., from fMRIPrep) is loaded, confound signals are
+regressed out, and the instantaneous phase at the gastric frequency is
+extracted for each voxel:
+
+\begin{lstlisting}
+# Load preprocessed BOLD data
+bold_data = gp.fetch_fmri_bold(session="0001")
+bold_2d = bold_data["bold"]       # (n_voxels, n_vols)
+confounds = bold_data["confounds"] # DataFrame
+
+# Regress out motion and physiological confounds
+bold_clean = fmri.regress_confounds(bold_2d, confounds)
+
+# Apply volume cuts to remove edge transients
+begin_cut, end_cut = 21, 21
+bold_cut = fmri.apply_volume_cuts(
+    bold_clean, begin_cut, end_cut
+)
+egg_cut = fmri.apply_volume_cuts(
+    phase_per_vol.reshape(1, -1),
+    begin_cut, end_cut
+).ravel()
+
+# Extract BOLD phase at gastric frequency
+bold_sfreq = 1.0 / tr
+bold_phases = fmri.bold_voxelwise_phases(
+    bold_cut, peak_freq, bold_sfreq
+)
+\end{lstlisting}
+
+\subsection{PLV Map Computation}
+
+The phase-locking value between the EGG phase and each voxel's BOLD phase is
+computed to generate a whole-brain PLV map. Statistical significance is
+assessed via comparison to a surrogate distribution created by circular
+time-shifting:
+
+\begin{lstlisting}
+# Compute empirical PLV map
+plv_map = fmri.compute_plv_map(egg_cut, bold_phases)
+
+# Compute surrogate PLV for statistical testing
+surr_plv = fmri.compute_surrogate_plv_map(
+    egg_cut, bold_phases,
+    n_surrogates=1000, seed=42
+)
+
+# Z-score the empirical PLV against surrogates
+z_map = gp.coupling_zscore(plv_map, surr_plv)
+print(f"Max PLV: {plv_map.max():.3f}")
+print(f"Max z-score: {z_map.max():.2f}")
+\end{lstlisting}
+
+The resulting PLV and z-score maps can be reshaped to 3D volumes and saved as
+NIfTI images for visualization in standard neuroimaging viewers, or plotted
+directly using GastroPy's nilearn-based visualization functions.
+
+\subsection{Coupling Statistics}
+
+GastroPy's coupling module also provides functions for testing the
+significance of individual PLV values using the Rayleigh test for circular
+uniformity:
+
+\begin{lstlisting}
+# Test whether EGG-BOLD coupling is significant
+# for a region of interest
+roi_phase = bold_phases[roi_mask].mean(axis=0)
+phase_diff = egg_cut - roi_phase
+
+z_stat, p_value = gp.rayleigh_test(phase_diff)
+print(f"Rayleigh z = {z_stat:.2f}, p = {p_value:.4f}")
+\end{lstlisting}
+
+% ============================================================================
+% 6. COMPARISON WITH EXISTING TOOLS
+% ============================================================================
+\section{Comparison with Existing Tools}
+
+Table~\ref{tab:comparison} compares GastroPy's capabilities with existing EGG
+analysis tools.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of EGG analysis tools across key features. PLV = phase-locking value.}
+\label{tab:comparison}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Feature} & \textbf{GastroPy} & \textbf{NeuroKit2} & \textbf{MNE-Python} & \textbf{StomachBrain} \\
+\midrule
+Language & Python & Python & Python & MATLAB \\
+EGG pipeline & Full & Basic & No & Partial \\
+Multi-channel selection & Yes & No & N/A & No \\
+Phase artifact detection & Yes & No & EEG-focused & No \\
+Gastric-brain coupling & PLV + surr. & No & No & PLV \\
+Time-frequency analysis & Yes & Yes & Yes & No \\
+Bundled EGG data & Yes & No & No & No \\
+Quality assessment & Automated & No & N/A & Manual \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+GastroPy addresses several gaps not filled by existing tools. Unlike
+NeuroKit2 \citep{Makowski2021}, which provides general biosignal processing
+with basic EGG support (single-channel filtering and PSD), GastroPy offers a
+complete EGG-specific pipeline including multi-channel selection, phase-based
+artifact detection following \citet{Wolpert2020}, automated quality
+assessment, and the full gastric-brain coupling workflow. Unlike MNE-Python
+\citep{Gramfort2013}, which excels at high-frequency electrophysiology (EEG,
+MEG) but does not target the gastric frequency range, GastroPy's filtering
+and spectral analysis are optimized for the ultra-low-frequency (0.01--0.2
+Hz) domain of gastric signals. Unlike the MATLAB-based StomachBrain pipeline
+\citep{Banellis2025}, GastroPy provides a modular, pip-installable Python
+package with a composable API, bundled test data, and continuous integration.
+
+We chose to develop a standalone package rather than contribute EGG-specific
+functionality to an existing project because the gastric slow wave has unique
+characteristics that require domain-specific design decisions throughout the
+analysis chain. The gastric rhythm occupies a frequency range (0.03--0.07 Hz)
+that falls below the default filter settings of most electrophysiology
+toolkits. Its long cycle duration (15--30 seconds) requires specialized
+windowing parameters for spectral analysis, and the coupling with brain
+signals requires fMRI-specific preprocessing (trigger alignment, confound
+regression) that is outside the scope of general biosignal packages. GastroPy's
+layered architecture makes it straightforward to use the core EGG processing
+modules independently of the neuroimaging layer, and its standard array-based
+API ensures interoperability with the broader scientific Python ecosystem.
+
+% ============================================================================
+% 7. TESTING AND QUALITY ASSURANCE
+% ============================================================================
+\section{Testing and Quality Assurance}
+
+GastroPy maintains a comprehensive automated test suite of 178 tests covering
+all public functions across every module. Tests verify signal processing
+correctness (e.g., that bandpass filtering preserves in-band energy while
+attenuating out-of-band frequencies), metric computation accuracy (e.g., that
+the instability coefficient increases for irregular rhythms), coupling
+statistics (e.g., that PLV equals 1.0 for identical phase series and
+approaches 0 for uncorrelated series), and visualization outputs (e.g., that
+plotting functions return valid matplotlib figures without errors).
+
+The test suite runs automatically via GitHub Actions on every push and pull
+request, with separate workflows for testing (pytest), linting (Ruff check and
+format verification), and documentation building (Sphinx). Tests are executed
+on the latest Ubuntu runner with Python 3.13. All sample data used in tests is
+bundled with the package, ensuring that tests are self-contained and
+reproducible without network access.
+
+% ============================================================================
+% 8. DISCUSSION
+% ============================================================================
+\section{Discussion}
+
+GastroPy provides the first dedicated, open-source Python package for
+electrogastrography signal processing and gastric-brain coupling analysis. By
+consolidating methods that were previously scattered across lab-specific
+MATLAB scripts and ad hoc Python code into a tested, documented, and
+pip-installable package, GastroPy aims to lower the barrier to rigorous EGG
+analysis and accelerate research on the brain-gut axis.
+
+\subsection{Current Capabilities and Use Cases}
+
+The package currently supports the full standalone EGG processing workflow
+(spectral analysis, filtering, phase extraction, cycle metrics, artifact
+detection, quality assessment) and the complete EGG-fMRI coupling pipeline
+(trigger alignment, BOLD preprocessing, voxelwise phase extraction, PLV
+mapping with surrogate testing). The modular architecture allows each
+function to be used independently, enabling researchers to build custom
+pipelines tailored to their specific experimental designs while benefiting
+from validated, tested implementations of standard analysis steps.
+
+GastroPy is designed to serve several overlapping user communities.
+\emph{Neuroscientists} studying brain-body interactions can use the complete
+EGG-fMRI coupling pipeline to generate whole-brain PLV maps and identify
+brain regions synchronized with the gastric rhythm.
+\emph{Psychophysiologists} conducting standalone EGG studies can use the core
+processing pipeline for spectral analysis, rhythm characterization, and
+artifact detection without requiring any neuroimaging dependencies.
+\emph{Clinical researchers} investigating gastric motility disorders can
+leverage the automated quality assessment and multi-band decomposition to
+characterize dysrhythmias across the bradygastric, normogastric, and
+tachygastric ranges. \emph{Methods developers} building novel analysis
+pipelines can use individual functions (e.g., phase extraction, PLV
+computation, surrogate generation) as composable building blocks within their
+own workflows.
+
+The bundled sample data---three fMRI-EGG sessions from a concurrent recording
+study and one standalone EGG recording from the \citet{Wolpert2020} normative
+dataset---provides immediate access to realistic data for learning, testing,
+and benchmarking, without requiring researchers to acquire or share their own
+recordings. Larger preprocessed fMRI BOLD datasets are available via the
+\texttt{fetch\_fmri\_bold} function, which downloads data from GitHub Releases
+using the Pooch library for reliable, cached retrieval.
+
+\subsection{Reproducibility Considerations}
+
+A core motivation for GastroPy is to improve reproducibility in EGG research.
+Currently, many labs use custom analysis scripts that are not publicly
+available, may contain undocumented parameter choices, and are difficult to
+verify or replicate. By providing a tested, documented, and version-controlled
+implementation of standard EGG analysis methods, GastroPy enables researchers
+to report their analysis parameters precisely (e.g., by referencing specific
+function names and parameter values) and to share complete, executable analysis
+pipelines alongside their publications.
+
+All stochastic operations in GastroPy (surrogate generation for PLV testing)
+accept explicit random seeds, ensuring bitwise reproducibility. The package
+pins minimum dependency versions and is continuously tested on multiple
+platforms via GitHub Actions. The automated test suite of 178 tests provides
+regression protection against inadvertent changes to algorithm behavior across
+releases.
+
+\subsection{Limitations and Future Directions}
+
+Several limitations of the current release should be noted. First, the
+coupling module currently supports only the PLV metric; future releases will
+add additional coupling measures such as amplitude-phase coupling, coherence,
+and information-theoretic metrics, along with group-level statistical testing
+for multi-subject studies (e.g., permutation-based cluster correction for PLV
+maps). Second, while the core signal processing modules are modality-agnostic,
+the neuroimaging layer currently supports only fMRI; planned extensions include
+EEG-EGG and MEG-EGG coupling via the \texttt{gastropy.neuro.eeg} and
+\texttt{gastropy.neuro.meg} submodules, which will leverage MNE-Python's
+existing infrastructure for high-frequency electrophysiology data. Third, the
+package does not yet include fully BIDS-compatible data loading, though
+preliminary I/O support for BrainVision, EDF, and CSV formats is available in
+the \texttt{gastropy.io} module. Fourth, the current artifact detection
+approach operates at the cycle level; future work may incorporate continuous
+artifact scoring, automated channel interpolation, and integration with
+independent component analysis for artifact removal.
+
+We also plan to expand the sample data library with additional recordings
+spanning different experimental conditions (fasting vs. postprandial, clinical
+populations, pharmacological challenges), develop interactive tutorials as
+Jupyter notebooks demonstrating common analysis workflows, and establish
+cross-validation benchmarks against existing MATLAB implementations to
+quantify numerical agreement. Integration with complementary biosignal
+packages such as Systole \citep{Legrand2020} for cardiac-gastric interaction
+analysis represents another promising direction for multimodal brain-body
+research.
+
+\subsection{Conclusion}
+
+GastroPy fills a critical gap in the scientific Python ecosystem by providing
+the first dedicated toolkit for electrogastrography signal processing and
+gastric-brain coupling analysis. Its modular architecture, domain-specific
+defaults, comprehensive test suite, and bundled sample data make it accessible
+to both newcomers to EGG analysis and experienced researchers transitioning
+from MATLAB-based workflows. By consolidating validated implementations of
+EGG analysis methods into a single, well-documented package, GastroPy aims to
+reduce the methodological variability that currently limits cross-study
+comparisons and to accelerate the adoption of best practices in gastric-brain
+coupling research. As interest in the brain-gut axis continues to grow across
+neuroscience, psychiatry, gastroenterology, and human-computer interaction, we
+hope that GastroPy will serve as a foundation for reproducible, collaborative
+research on gastric-brain interactions and their role in health and disease.
+
+% ============================================================================
+% AI USAGE DISCLOSURE
+% ============================================================================
+\section*{AI Usage Disclosure}
+
+Generative AI tools were used during the development of GastroPy.
+Specifically, Anthropic Claude (Claude Code CLI, models
+claude-sonnet-4-20250514 and claude-opus-4-20250514) was used for code
+generation, test writing, documentation drafting, and debugging across all
+modules. All AI-generated code was reviewed, tested, and validated by the
+authors. Architectural decisions, algorithm selection, and scientific
+methodology were determined by the authors. The automated test suite verifies
+correctness of all implementations. The authors accept full responsibility for
+the accuracy, originality, and licensing of all code and documentation.
+
+% ============================================================================
+% ACKNOWLEDGEMENTS
+% ============================================================================
+\section*{Acknowledgements}
+
+We acknowledge support from the Lundbeck Foundation (R380-2021-1538,
+R140-2013-13057), the European Research Council (ERC-2020-COG, 101001893,
+EMBODIED-COMPUTATION), and Aarhus University.
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\bibliographystyle{apalike}
+\bibliography{paper}
+
+\end{document}
