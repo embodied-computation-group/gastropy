@@ -7,6 +7,19 @@ license: MIT
 authors:
   - family-names: Allen
     given-names: Micah
+    email: micah@cfin.au.dk
+    affiliation: "Aarhus University, Institute of Clinical Medicine"
+    orcid: "https://orcid.org/0000-0001-9399-4179"
+  - family-names: Kluger
+    given-names: Daniel
+  - family-names: Banellis
+    given-names: Leah
+  - family-names: Rebollo
+    given-names: Ignacio
+  - family-names: Kroemer
+    given-names: Nils
+  - family-names: Dalmaijer
+    given-names: Edwin
 repository-code: "https://github.com/embodied-computation-group/gastropy"
 url: "https://embodied-computation-group.github.io/gastropy"
 keywords:
