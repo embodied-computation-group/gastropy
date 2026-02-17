@@ -15,9 +15,21 @@ algorithms and applications. *Neural Networks*, 13, 411–430.
 
 import numpy as np
 from scipy.fft import rfft, rfftfreq
-from sklearn.decomposition import FastICA
 
 from ..metrics import NORMOGASTRIA
+
+
+def _get_fast_ica():
+    """Return FastICA, raising a clear ImportError if sklearn is absent."""
+    try:
+        from sklearn.decomposition import FastICA
+
+        return FastICA
+    except ImportError as exc:
+        raise ImportError(
+            "scikit-learn is required for ica_denoise. "
+            "Install it with:  pip install 'gastropy[ica]'"
+        ) from exc
 
 
 def _component_snr(component, sfreq, f_lo, f_hi):
@@ -103,6 +115,9 @@ def ica_denoise(data, sfreq, low_hz=None, high_hz=None, band=None, snr_threshold
 
     Raises
     ------
+    ImportError
+        If scikit-learn is not installed. Install with
+        ``pip install 'gastropy[ica]'``.
     ValueError
         If ``data`` is 1-dimensional (requires multi-channel input).
     RuntimeError
@@ -151,6 +166,7 @@ def ica_denoise(data, sfreq, low_hz=None, high_hz=None, band=None, snr_threshold
     n_channels = data.shape[0]
 
     # FastICA expects (n_samples, n_features) — transpose in/out
+    FastICA = _get_fast_ica()
     ica = FastICA(random_state=random_state)
     components = ica.fit_transform(data.T).T  # (n_components, n_samples)
 

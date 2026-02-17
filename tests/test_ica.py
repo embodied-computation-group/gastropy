@@ -3,6 +3,8 @@
 import numpy as np
 import pytest
 
+pytest.importorskip("sklearn", reason="scikit-learn not installed; skip ICA tests (pip install 'gastropy[ica]')")
+
 from gastropy.signal import ica_denoise
 
 

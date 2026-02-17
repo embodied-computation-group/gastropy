@@ -174,7 +174,7 @@ Understanding these principles will help your contributions fit naturally into t
 
 ### Core modules are dependency-light
 
-The core modules — `signal`, `metrics`, `egg`, `coupling`, `timefreq` — depend only on numpy, scipy, pandas, and matplotlib. They must **not** import MNE, nilearn, nibabel, or other neuroimaging libraries.
+The core modules — `signal`, `metrics`, `egg`, `coupling`, `timefreq` — depend only on numpy, scipy, pandas, and matplotlib. They must **not** import MNE, nilearn, nibabel, or other neuroimaging libraries. scikit-learn is an **optional** dependency available via `pip install gastropy[ica]`; it is imported lazily inside `ica_denoise` and raises a clear `ImportError` with install instructions if absent.
 
 ### Neuroimaging features are isolated
 

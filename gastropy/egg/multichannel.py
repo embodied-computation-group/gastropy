@@ -26,7 +26,7 @@ from .egg_process import egg_process
 from .egg_select import select_best_channel
 
 
-def egg_process_multichannel(data, sfreq, method="per_channel", band=None, **kwargs):
+def egg_process_multichannel(data, sfreq, method="per_channel", filter_method="fir", band=None, **kwargs):
     """Process a multi-channel EGG recording.
 
     Applies one of three named strategies to ``(n_channels, n_samples)``
@@ -53,13 +53,18 @@ def egg_process_multichannel(data, sfreq, method="per_channel", band=None, **kwa
     method : str, optional
         Processing strategy: ``"per_channel"`` (default),
         ``"best_channel"``, or ``"ica"``.
+    filter_method : str, optional
+        Filter method passed to :func:`egg_process` for each channel:
+        ``"fir"`` (default), ``"iir"``, or ``"dalmaijer2025"``.
+        Kept separate from ``method`` (the multichannel strategy) to
+        avoid a parameter name collision.
     band : GastricBand, optional
         Target gastric band. Default is ``NORMOGASTRIA``.
     **kwargs
-        Additional keyword arguments passed to :func:`egg_process`
-        (e.g., ``method`` for the filter type). For ``"ica"``, also
-        accepts ``ica_low_hz``, ``ica_high_hz``, and
-        ``ica_snr_threshold`` to control the ICA denoising step.
+        Additional keyword arguments passed to :func:`egg_process`.
+        For ``"ica"``, also accepts ``ica_low_hz``, ``ica_high_hz``,
+        ``ica_snr_threshold``, and ``ica_random_state`` to control
+        the ICA denoising step.
 
     Returns
     -------
@@ -91,6 +96,15 @@ def egg_process_multichannel(data, sfreq, method="per_channel", band=None, **kwa
         If ``data`` is 1-dimensional or has fewer than 2 channels.
     ValueError
         If ``method`` is not one of the supported options.
+
+    Notes
+    -----
+    ``best_idx`` in the ``"per_channel"`` and ``"ica"`` results is
+    determined by ``band_power_mean`` from the post-processing output
+    of :func:`egg_process`.  The ``"best_channel"`` strategy uses
+    :func:`select_best_channel`, which ranks by PSD **peak** power
+    before processing.  These two criteria may occasionally disagree
+    on noisy data.
 
     See Also
     --------
@@ -138,19 +152,19 @@ def egg_process_multichannel(data, sfreq, method="per_channel", band=None, **kwa
         raise ValueError(f"Unknown method {method!r}. Choose from {valid_methods}.")
 
     if method == "best_channel":
-        return _process_best_channel(data, sfreq, band, **kwargs)
+        return _process_best_channel(data, sfreq, band, filter_method=filter_method, **kwargs)
     elif method == "ica":
-        return _process_ica(data, sfreq, band, **kwargs)
+        return _process_ica(data, sfreq, band, filter_method=filter_method, **kwargs)
     else:
-        return _process_per_channel(data, sfreq, band, **kwargs)
+        return _process_per_channel(data, sfreq, band, filter_method=filter_method, **kwargs)
 
 
-def _process_per_channel(data, sfreq, band, **kwargs):
+def _process_per_channel(data, sfreq, band, filter_method="fir", **kwargs):
     """Run egg_process on each channel independently."""
     n_channels = data.shape[0]
     channels = {}
     for ch_idx in range(n_channels):
-        signals_df, info = egg_process(data[ch_idx], sfreq, band=band, **kwargs)
+        signals_df, info = egg_process(data[ch_idx], sfreq, band=band, method=filter_method, **kwargs)
         channels[ch_idx] = (signals_df, info)
 
     summary, best_idx = _build_summary(channels, n_channels, band)
@@ -162,10 +176,10 @@ def _process_per_channel(data, sfreq, band, **kwargs):
     }
 
 
-def _process_best_channel(data, sfreq, band, **kwargs):
+def _process_best_channel(data, sfreq, band, filter_method="fir", **kwargs):
     """Select strongest channel and run egg_process on it."""
     best_idx, peak_freq, freqs, psd = select_best_channel(data, sfreq, band=band)
-    signals_df, info = egg_process(data[best_idx], sfreq, band=band, **kwargs)
+    signals_df, info = egg_process(data[best_idx], sfreq, band=band, method=filter_method, **kwargs)
     info["best_channel_idx"] = int(best_idx)
     return {
         "signals": signals_df,
@@ -174,7 +188,7 @@ def _process_best_channel(data, sfreq, band, **kwargs):
     }
 
 
-def _process_ica(data, sfreq, band, **kwargs):
+def _process_ica(data, sfreq, band, filter_method="fir", **kwargs):
     """ICA-denoise then run per-channel processing."""
     # Extract ICA-specific kwargs (not passed to egg_process)
     ica_low_hz = kwargs.pop("ica_low_hz", band.f_lo)
@@ -191,7 +205,7 @@ def _process_ica(data, sfreq, band, **kwargs):
         random_state=random_state,
     )
 
-    result = _process_per_channel(denoised, sfreq, band, **kwargs)
+    result = _process_per_channel(denoised, sfreq, band, filter_method=filter_method, **kwargs)
     result["method"] = "ica"
     result["ica_info"] = ica_info
     return result

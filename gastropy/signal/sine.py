@@ -48,7 +48,7 @@ def sine_model(t, freq, phase, amp):
     return amp * np.sin(2.0 * np.pi * freq * t + phase)
 
 
-def fit_sine(signal, sfreq, freq=None):
+def fit_sine(signal, sfreq, freq=None, freq_init=0.05):
     """Fit a sine wave to an EGG signal using least-squares optimisation.
 
     Minimises the sum of squared residuals between ``signal`` and a
@@ -66,6 +66,12 @@ def fit_sine(signal, sfreq, freq=None):
         If provided, the frequency is fixed to this value (Hz) and only
         phase and amplitude are optimised. If None, all three parameters
         are fitted jointly. Default is None.
+    freq_init : float, optional
+        Initial frequency guess (Hz) used when ``freq=None``. Defaults
+        to 0.05 Hz (normogastric centre, ~3 cpm). Set this to a value
+        near the expected dominant frequency when analysing signals
+        outside the normogastric band (e.g. ``freq_init=0.1`` for
+        tachygastric recordings).
 
     Returns
     -------
@@ -74,7 +80,9 @@ def fit_sine(signal, sfreq, freq=None):
 
         - ``freq_hz`` : float — fitted (or fixed) frequency in Hz.
         - ``phase_rad`` : float — fitted phase in radians.
-        - ``amplitude`` : float — fitted amplitude.
+        - ``amplitude`` : float — fitted amplitude (may be negative;
+          a negative amplitude is equivalent to a positive amplitude
+          with a phase shift of π).
         - ``residual`` : float — sum of squared residuals at solution.
 
     References
@@ -106,7 +114,7 @@ def fit_sine(signal, sfreq, freq=None):
         return float(np.nansum((signal - y_pred) ** 2))
 
     if freq is None:
-        x0 = [0.05, 0.0, float(np.std(signal))]
+        x0 = [freq_init, 0.0, float(np.std(signal))]
         bounds = [(1e-6, None), (-np.pi, np.pi), (None, None)]
     else:
         x0 = [0.0, float(np.std(signal))]

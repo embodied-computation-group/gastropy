@@ -185,6 +185,17 @@ def remove_movement_artifacts(data, sfreq, freq=0.05, window=1.0):
     cleaned : np.ndarray
         Movement-corrected signal. Same shape as input.
 
+    Notes
+    -----
+    The filter always subtracts the estimated noise component
+    ``x_hat``, which contains the local mean ``E[y]``.  As a result
+    the output is effectively mean-centered within each sliding window,
+    and any DC offset in the original signal will be removed.  A
+    constant (zero-variance) signal maps to all zeros.  This is the
+    expected behaviour for EGG preprocessing, where a zero-mean signal
+    is assumed, but should be noted when applying to signals with a
+    meaningful baseline.
+
     References
     ----------
     Gharibans, A. A., Smarr, B., Kunkel, D. C., Kriegsfeld, L. J.,

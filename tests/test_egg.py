@@ -1,10 +1,15 @@
 """Tests for gastropy.egg module."""
 
+import importlib
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from gastropy.egg import egg_clean, egg_process, egg_process_multichannel, select_best_channel, select_peak_frequency
+
+_sklearn_missing = importlib.util.find_spec("sklearn") is None
+_skip_ica = pytest.mark.skipif(_sklearn_missing, reason="scikit-learn not installed (pip install 'gastropy[ica]')")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -212,6 +217,7 @@ class TestEggProcessMultichannel:
         for col in ("raw", "filtered", "phase", "amplitude"):
             assert col in result["signals"].columns
 
+    @_skip_ica
     def test_ica_method_runs(self):
         """ica method should complete without error on a clear gastric signal."""
         data = _make_multichannel_egg(n_channels=4, noise=0.1)
@@ -219,6 +225,7 @@ class TestEggProcessMultichannel:
         assert result["method"] == "ica"
         assert "ica_info" in result
 
+    @_skip_ica
     def test_ica_shape_preserved(self):
         """ica method output channels should match input channel count."""
         n = 4
