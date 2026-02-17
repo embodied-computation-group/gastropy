@@ -5,6 +5,7 @@ import pandas as pd
 
 from ..metrics import NORMOGASTRIA, band_power, cycle_stats, instability_coefficient, proportion_normogastric
 from ..signal import apply_bandpass, cycle_durations, instantaneous_phase
+from ..signal.preprocessing import hampel_filter, remove_movement_artifacts
 from .egg_select import select_peak_frequency
 
 
@@ -13,6 +14,20 @@ def egg_clean(data, sfreq, low_hz=None, high_hz=None, method="fir", band=None, *
 
     By default, filters to the normogastric band (0.033-0.067 Hz,
     2-4 cpm). Custom frequency bounds can be provided.
+
+    Supports three named method variants following the neurokit2
+    convention of attributable, citable pipelines:
+
+    - ``"fir"`` *(default)* — Zero-phase FIR bandpass with adaptive
+      tap count. Suitable for most applications.
+    - ``"iir"`` — Zero-phase IIR Butterworth bandpass using cascaded
+      second-order sections (SOS). Faster for real-time or iterative
+      use, slightly less precise roll-off.
+    - ``"dalmaijer2025"`` — Full preprocessing pipeline from
+      Dalmaijer (2025): Hampel spike removal →
+      LMMSE movement-artifact attenuation → IIR Butterworth bandpass.
+      Recommended when motion artifacts are present in ambulatory
+      recordings.
 
     Parameters
     ----------
@@ -25,24 +40,41 @@ def egg_clean(data, sfreq, low_hz=None, high_hz=None, method="fir", band=None, *
     high_hz : float, optional
         Upper passband edge in Hz. If None, uses ``band.f_hi``.
     method : str, optional
-        Filter method: ``"fir"`` (default) or ``"iir"``.
+        Cleaning method: ``"fir"`` (default), ``"iir"``, or
+        ``"dalmaijer2025"``.
     band : GastricBand, optional
         Gastric band for default frequency limits. Default is
         ``NORMOGASTRIA``.
     **filter_kwargs
-        Additional arguments passed to ``apply_bandpass`` (e.g.,
-        ``f_order``, ``transition_width``).
+        Additional arguments passed to ``apply_bandpass`` when
+        ``method`` is ``"fir"`` or ``"iir"`` (e.g., ``f_order``,
+        ``transition_width``). For ``"dalmaijer2025"``, accepts
+        ``hampel_k`` (int, default 3), ``hampel_n_sigma`` (float,
+        default 3.0), and ``movement_window`` (float, default 1.0).
 
     Returns
     -------
     cleaned : np.ndarray
-        Filtered EGG signal.
+        Cleaned EGG signal.
     info : dict
-        Filter metadata.
+        Processing metadata, including ``"cleaning_method"`` and
+        sub-step information for multi-stage pipelines.
 
     See Also
     --------
     egg_process : Full EGG processing pipeline.
+    hampel_filter : Sliding-window spike removal.
+    remove_movement_artifacts : LMMSE movement artifact filter.
+
+    References
+    ----------
+    Dalmaijer, E. S. (2025). electrography v1.1.1.
+    https://github.com/esdalmaijer/electrography
+
+    Gharibans, A. A., Smarr, B., Kunkel, D. C., Kriegsfeld, L. J.,
+    Mousa, H., & Coleman, T. P. (2018). Artifact rejection methodology
+    enables continuous, noninvasive measurement of gastric myoelectric
+    activity in ambulatory subjects. *Scientific Reports*, 8, 5019.
 
     Examples
     --------
@@ -50,6 +82,14 @@ def egg_clean(data, sfreq, low_hz=None, high_hz=None, method="fir", band=None, *
     >>> from gastropy.egg import egg_clean
     >>> sig = np.random.randn(3000)  # 300s at 10 Hz
     >>> cleaned, info = egg_clean(sig, sfreq=10.0)
+
+    Use the Dalmaijer 2025 full preprocessing pipeline:
+
+    >>> t = np.arange(0, 300, 0.1)
+    >>> sig = np.sin(2 * np.pi * 0.05 * t) + 0.1 * np.random.randn(len(t))
+    >>> cleaned, info = egg_clean(sig, sfreq=10.0, method="dalmaijer2025")
+    >>> info["cleaning_method"]
+    'dalmaijer2025'
     """
     if band is None:
         band = NORMOGASTRIA
@@ -58,7 +98,47 @@ def egg_clean(data, sfreq, low_hz=None, high_hz=None, method="fir", band=None, *
     if high_hz is None:
         high_hz = band.f_hi
 
-    return apply_bandpass(data, sfreq, low_hz, high_hz, method=method, **filter_kwargs)
+    if method.lower() == "dalmaijer2025":
+        return _egg_clean_dalmaijer2025(data, sfreq, low_hz, high_hz, **filter_kwargs)
+
+    cleaned, info = apply_bandpass(data, sfreq, low_hz, high_hz, method=method, **filter_kwargs)
+    info["cleaning_method"] = method.lower()
+    return cleaned, info
+
+
+def _egg_clean_dalmaijer2025(data, sfreq, low_hz, high_hz, **kwargs):
+    """Full Dalmaijer (2025) preprocessing pipeline.
+
+    Steps:
+    1. Hampel filter — spike / transient outlier removal.
+    2. LMMSE movement filter — attenuate movement artifacts.
+    3. IIR Butterworth bandpass — frequency selection.
+    """
+    data = np.asarray(data, dtype=float)
+
+    hampel_k = kwargs.get("hampel_k", 3)
+    hampel_n_sigma = kwargs.get("hampel_n_sigma", 3.0)
+    movement_window = kwargs.get("movement_window", 1.0)
+    freq_centre = (low_hz + high_hz) / 2.0
+
+    # Step 1: Hampel spike removal
+    spike_cleaned = hampel_filter(data, k=hampel_k, n_sigma=hampel_n_sigma)
+
+    # Step 2: LMMSE movement artifact attenuation
+    movement_cleaned = remove_movement_artifacts(spike_cleaned, sfreq, freq=freq_centre, window=movement_window)
+
+    # Step 3: IIR Butterworth bandpass
+    cleaned, filter_info = apply_bandpass(movement_cleaned, sfreq, low_hz, high_hz, method="iir")
+
+    info = {
+        "cleaning_method": "dalmaijer2025",
+        "hampel_k": hampel_k,
+        "hampel_n_sigma": hampel_n_sigma,
+        "movement_window": movement_window,
+        "freq_centre_hz": freq_centre,
+        **filter_info,
+    }
+    return cleaned, info
 
 
 def egg_process(data, sfreq, band=None, method="fir", **filter_kwargs):
