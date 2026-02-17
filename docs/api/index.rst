@@ -22,6 +22,7 @@ High-level functions for EGG signal processing.
 
    egg_process
    egg_clean
+   egg_process_multichannel
    select_best_channel
    select_peak_frequency
 
@@ -43,6 +44,24 @@ Low-level signal processing building blocks.
    resample_signal
    detect_phase_artifacts
    find_cycle_edges
+
+Signal --- Preprocessing & Artifact Removal
+-------------------------------------------
+
+Time-domain preprocessing functions for artifact removal before
+bandpass filtering. All accept 1D or 2D ``(n_channels, n_samples)``
+arrays.
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   hampel_filter
+   mad_filter
+   remove_movement_artifacts
+   ica_denoise
+   fit_sine
+   sine_model
 
 Metrics --- Rhythm Quantification
 ---------------------------------

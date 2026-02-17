@@ -97,6 +97,14 @@ amplitude, detects gastric cycles, and computes standard metrics.
    print(f"Instability IC : {info['instability_coefficient']:.4f}")
    print(f"% Normogastric : {info['proportion_normogastric']:.0%}")
 
+.. tip::
+
+   ``egg_clean`` supports multiple named cleaning pipelines via its
+   ``method`` parameter. ``method="fir"`` (default) uses a zero-phase
+   FIR bandpass. ``method="dalmaijer2025"`` applies Hampel spike removal
+   → LMMSE movement filtering → IIR Butterworth bandpass, suitable for
+   ambulatory recordings with motion artifacts.
+
 Step-by-Step Processing
 -----------------------
 
@@ -137,11 +145,36 @@ You can also call each processing step individually for more control.
    bp = band_power(freqs, psd, NORMOGASTRIA)
    ic = gp.instability_coefficient(durations)
 
-Artifact Detection
-------------------
+Artifact Removal & Detection
+----------------------------
 
-``detect_phase_artifacts`` flags cycles with non-monotonic phase or
-outlier durations, following the method of Wolpert et al. (2020).
+GastroPy provides both time-domain preprocessing (before bandpass
+filtering) and phase-based artifact detection (after filtering).
+
+**Time-domain preprocessing**
+
+Three composable functions remove transient artifacts and movement noise
+from the raw signal before filtering. They accept 1D single-channel or
+2D ``(n_channels, n_samples)`` arrays.
+
+.. code-block:: python
+
+   # Spike removal: Hampel sliding-window median identifier (Davies & Gather 1993)
+   signal = gp.hampel_filter(signal)
+
+   # Faster global alternative: median absolute deviation filter
+   signal = gp.mad_filter(signal)
+
+   # Movement artifact attenuation: LMMSE Wiener filter (Gharibans et al. 2018)
+   signal = gp.remove_movement_artifacts(signal, sfreq)
+
+   # Bundled pipeline (Hampel → LMMSE → IIR Butterworth):
+   cleaned, info = gp.egg_clean(signal, sfreq, method="dalmaijer2025")
+
+**Phase-based detection**
+
+After filtering, ``detect_phase_artifacts`` flags cycles with
+non-monotonic phase or outlier durations, following Wolpert et al. (2020).
 
 .. code-block:: python
 
@@ -149,19 +182,30 @@ outlier durations, following the method of Wolpert et al. (2020).
    print(f"Artifacts found: {artifacts['n_artifacts']}")
    print(f"Artifact mask  : {artifacts['artifact_mask'].sum()} samples flagged")
 
-Channel Selection
------------------
+Channel Selection & Multi-Channel Processing
+---------------------------------------------
 
-When working with multi-channel EGG data, ``select_best_channel`` ranks
-channels by peak power in the normogastric band and returns the best one.
-Peak detection uses ``scipy.signal.find_peaks`` for robust local-maximum
-identification.
+``select_best_channel`` ranks channels by peak power in the normogastric
+band and returns the best one. ``egg_process_multichannel`` provides a
+higher-level interface with three named strategies.
 
 .. code-block:: python
 
    # data shape: (n_channels, n_samples)
+
+   # Low-level: select best channel, then process
    best_idx, peak_freq, freqs, psd = gp.select_best_channel(data, sfreq)
    print(f"Best channel: {best_idx} (peak at {peak_freq:.3f} Hz)")
+
+   # High-level: process all channels independently
+   result = gp.egg_process_multichannel(data, sfreq, method="per_channel")
+   print(result["summary"])          # DataFrame: peak_freq, IC, prop_normo per channel
+   print(f"Best channel: {result['best_idx']}")
+
+   # Use ICA spatial denoising first (requires scikit-learn)
+   result = gp.egg_process_multichannel(data, sfreq, method="ica",
+                                        ica_snr_threshold=2.0)
+   print(result["ica_info"]["n_kept"], "ICA components retained")
 
 Visualization
 -------------

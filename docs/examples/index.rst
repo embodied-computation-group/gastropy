@@ -27,6 +27,8 @@ Processing
 
    egg_process
    channel_selection
+   artifact_removal
+   multichannel_processing
    bandpass_filtering
    multiband_analysis
    quality_assessment
