@@ -8,5 +8,6 @@ processing and analysis.
    :maxdepth: 2
 
    egg_processing
+   multichannel_pipeline
    gastric_brain_coupling
    fmri_coupling_real
