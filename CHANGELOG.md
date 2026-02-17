@@ -34,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (neurokit2-style) applying Hampel spike removal → LMMSE movement filter →
   IIR Butterworth bandpass in sequence. Dalmaijer (2025); Gharibans et al.
   (2018).
-- `scikit-learn>=1.3` added as a core dependency (required for `ica_denoise`).
+- `scikit-learn>=1.3` added as an **optional** dependency (`pip install gastropy[ica]`),
+  required for `ica_denoise`. Imported lazily so the base install remains lightweight.
 
 - **`gastropy.io`** — BIDS peripheral physiology I/O module:
   `read_bids_physio`, `write_bids_physio`, `parse_bids_filename` (stdlib +

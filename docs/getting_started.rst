@@ -121,7 +121,8 @@ You can also call each processing step individually for more control.
 
 .. code-block:: python
 
-   filtered, filt_info = gp.apply_bandpass(signal, sfreq, low_hz=0.033, high_hz=0.067)
+   # normogastric band: 2–4 cpm = NORMOGASTRIA (0.0333–0.0667 Hz)
+   filtered, filt_info = gp.apply_bandpass(signal, sfreq, low_hz=0.0333, high_hz=0.0667)
 
 **3. Phase and amplitude extraction**
 
