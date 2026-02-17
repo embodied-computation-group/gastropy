@@ -27,8 +27,7 @@ def _get_fast_ica():
         return FastICA
     except ImportError as exc:
         raise ImportError(
-            "scikit-learn is required for ica_denoise. "
-            "Install it with:  pip install 'gastropy[ica]'"
+            "scikit-learn is required for ica_denoise. Install it with:  pip install 'gastropy[ica]'"
         ) from exc
 
 
