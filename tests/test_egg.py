@@ -1,9 +1,15 @@
 """Tests for gastropy.egg module."""
 
+import importlib
+
 import numpy as np
 import pandas as pd
+import pytest
 
-from gastropy.egg import egg_clean, egg_process, select_best_channel, select_peak_frequency
+from gastropy.egg import egg_clean, egg_process, egg_process_multichannel, select_best_channel, select_peak_frequency
+
+_sklearn_missing = importlib.util.find_spec("sklearn") is None
+_skip_ica = pytest.mark.skipif(_sklearn_missing, reason="scikit-learn not installed (pip install 'gastropy[ica]')")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -138,3 +144,110 @@ class TestEggProcess:
         _, sig = _make_egg_signal(freq_hz=0.05, noise=0.05)
         _, info = egg_process(sig, sfreq=10.0)
         assert abs(info["peak_freq_hz"] - 0.05) < 0.005
+
+
+# ---------------------------------------------------------------------------
+# egg_process_multichannel
+# ---------------------------------------------------------------------------
+
+
+def _make_multichannel_egg(n_channels=4, freq=0.05, sfreq=10.0, duration=300.0, noise=0.1, seed=0):
+    """Create multi-channel EGG with a shared gastric component."""
+    rng = np.random.default_rng(seed)
+    t = np.arange(0, duration, 1.0 / sfreq)
+    gastric = np.sin(2 * np.pi * freq * t)
+    return np.stack([gastric + noise * rng.standard_normal(len(t)) for _ in range(n_channels)])
+
+
+class TestEggProcessMultichannel:
+    """Tests for egg_process_multichannel."""
+
+    def test_per_channel_returns_expected_keys(self):
+        """per_channel result should have channels, best_idx, summary, method."""
+        data = _make_multichannel_egg()
+        result = egg_process_multichannel(data, sfreq=10.0, method="per_channel")
+        for key in ("channels", "best_idx", "summary", "method"):
+            assert key in result
+
+    def test_per_channel_channels_dict_length(self):
+        """channels dict should have one entry per channel."""
+        n = 3
+        data = _make_multichannel_egg(n_channels=n)
+        result = egg_process_multichannel(data, sfreq=10.0)
+        assert len(result["channels"]) == n
+
+    def test_per_channel_signals_df_type(self):
+        """Each channel value should be a (DataFrame, dict) tuple."""
+        data = _make_multichannel_egg(n_channels=3)
+        result = egg_process_multichannel(data, sfreq=10.0)
+        for ch_idx, (signals_df, info) in result["channels"].items():
+            assert isinstance(signals_df, pd.DataFrame)
+            assert isinstance(info, dict)
+
+    def test_per_channel_summary_shape(self):
+        """Summary DataFrame should have one row per channel."""
+        n = 4
+        data = _make_multichannel_egg(n_channels=n)
+        result = egg_process_multichannel(data, sfreq=10.0)
+        assert len(result["summary"]) == n
+
+    def test_per_channel_method_label(self):
+        """method field should be 'per_channel'."""
+        data = _make_multichannel_egg()
+        result = egg_process_multichannel(data, sfreq=10.0, method="per_channel")
+        assert result["method"] == "per_channel"
+
+    def test_best_channel_returns_dataframe(self):
+        """best_channel result should contain a signals DataFrame."""
+        data = _make_multichannel_egg()
+        result = egg_process_multichannel(data, sfreq=10.0, method="best_channel")
+        assert "signals" in result
+        assert isinstance(result["signals"], pd.DataFrame)
+
+    def test_best_channel_info_has_best_idx(self):
+        """best_channel info should include best_channel_idx."""
+        data = _make_multichannel_egg()
+        result = egg_process_multichannel(data, sfreq=10.0, method="best_channel")
+        assert "best_channel_idx" in result["info"]
+
+    def test_best_channel_signals_columns(self):
+        """best_channel signals DataFrame should have the standard columns."""
+        data = _make_multichannel_egg()
+        result = egg_process_multichannel(data, sfreq=10.0, method="best_channel")
+        for col in ("raw", "filtered", "phase", "amplitude"):
+            assert col in result["signals"].columns
+
+    @_skip_ica
+    def test_ica_method_runs(self):
+        """ica method should complete without error on a clear gastric signal."""
+        data = _make_multichannel_egg(n_channels=4, noise=0.1)
+        result = egg_process_multichannel(data, sfreq=10.0, method="ica", ica_snr_threshold=1.5)
+        assert result["method"] == "ica"
+        assert "ica_info" in result
+
+    @_skip_ica
+    def test_ica_shape_preserved(self):
+        """ica method output channels should match input channel count."""
+        n = 4
+        data = _make_multichannel_egg(n_channels=n, noise=0.1)
+        result = egg_process_multichannel(data, sfreq=10.0, method="ica", ica_snr_threshold=1.5)
+        assert len(result["channels"]) == n
+
+    def test_raises_on_1d_input(self):
+        """Should raise ValueError when given a 1D array."""
+        _, sig = _make_egg_signal()
+        with pytest.raises(ValueError, match="2D"):
+            egg_process_multichannel(sig, sfreq=10.0)
+
+    def test_raises_on_single_channel(self):
+        """Should raise ValueError when given only 1 channel."""
+        _, sig = _make_egg_signal()
+        data = sig[np.newaxis, :]  # (1, n_samples)
+        with pytest.raises(ValueError, match="at least 2"):
+            egg_process_multichannel(data, sfreq=10.0)
+
+    def test_raises_on_unknown_method(self):
+        """Should raise ValueError for an unsupported method name."""
+        data = _make_multichannel_egg()
+        with pytest.raises(ValueError, match="Unknown method"):
+            egg_process_multichannel(data, sfreq=10.0, method="bad_method")

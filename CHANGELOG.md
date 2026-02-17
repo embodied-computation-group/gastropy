@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Multi-channel EGG processing** — `egg_process_multichannel` in
+  `gastropy.egg` supports three named strategies: `"per_channel"` (independent
+  processing of each electrode), `"best_channel"` (select strongest gastric
+  channel via PSD peak power), and `"ica"` (spatial ICA denoising across all
+  channels before per-channel processing). Closes #9.
+- **`hampel_filter`** (`gastropy.signal`) — Sliding-window median-based spike
+  removal (Hampel identifier). Accepts 1D or 2D `(n_channels, n_samples)`
+  arrays. Davies & Gather (1993); Dalmaijer (2025).
+- **`mad_filter`** (`gastropy.signal`) — Fast global median-absolute-deviation
+  outlier removal. Faster than `hampel_filter` but less adaptive to drift.
+  Dalmaijer (2025).
+- **`remove_movement_artifacts`** (`gastropy.signal`) — LMMSE Wiener-filter
+  for movement artifact attenuation, based on Gharibans et al. (2018),
+  *Scientific Reports* 8:5019.
+- **`ica_denoise`** (`gastropy.signal`) — FastICA spatial denoising for
+  multi-channel EGG. Retains components with gastric-band SNR above a
+  threshold and reconstructs to channel space. Hyvärinen & Oja (2000);
+  Dalmaijer (2025).
+- **`fit_sine` / `sine_model`** (`gastropy.signal`) — Least-squares sine wave
+  fitting for characterising dominant gastric frequency, phase, and amplitude.
+  Dalmaijer (2025).
+- **`method="dalmaijer2025"` in `egg_clean`** — Named pipeline variant
+  (neurokit2-style) applying Hampel spike removal → LMMSE movement filter →
+  IIR Butterworth bandpass in sequence. Dalmaijer (2025); Gharibans et al.
+  (2018).
+- `scikit-learn>=1.3` added as an **optional** dependency (`pip install gastropy[ica]`),
+  required for `ica_denoise`. Imported lazily so the base install remains lightweight.
+
 - **`gastropy.io`** — BIDS peripheral physiology I/O module:
   `read_bids_physio`, `write_bids_physio`, `parse_bids_filename` (stdlib +
   numpy only), and `brainvision_to_bids` converter (optional MNE dependency).

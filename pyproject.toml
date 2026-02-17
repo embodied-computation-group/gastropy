@@ -47,6 +47,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ica = [
+    "scikit-learn>=1.3",
+]
 neuro = [
     "mne>=1.5",
     "nilearn>=0.10",
@@ -67,7 +70,7 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-autodoc-typehints>=2.0",
 ]
-all = ["gastropy[neuro,dev,docs]"]
+all = ["gastropy[ica,neuro,dev,docs]"]
 
 [project.urls]
 Homepage = "https://github.com/embodied-computation-group/gastropy"

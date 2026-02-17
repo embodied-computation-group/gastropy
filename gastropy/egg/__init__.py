@@ -11,10 +11,12 @@ phase extraction, and metric computation.
 
 from .egg_process import egg_clean, egg_process
 from .egg_select import select_best_channel, select_peak_frequency
+from .multichannel import egg_process_multichannel
 
 __all__ = [
     "egg_process",
     "egg_clean",
+    "egg_process_multichannel",
     "select_best_channel",
     "select_peak_frequency",
 ]
