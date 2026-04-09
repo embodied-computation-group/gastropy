@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-09
+
+Published to PyPI. Adds multichannel processing, ICA denoising, preprocessing
+filters, BIDS I/O, and the BRM-style preprint.
+
 ### Added
 
 - **Multi-channel EGG processing** — `egg_process_multichannel` in
@@ -36,7 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (2018).
 - `scikit-learn>=1.3` added as an **optional** dependency (`pip install gastropy[ica]`),
   required for `ica_denoise`. Imported lazily so the base install remains lightweight.
-
 - **`gastropy.io`** — BIDS peripheral physiology I/O module:
   `read_bids_physio`, `write_bids_physio`, `parse_bids_filename` (stdlib +
   numpy only), and `brainvision_to_bids` converter (optional MNE dependency).
@@ -45,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example MATLAB BIDSifier script (`examples/matlab/egg_to_bids.m`) for
   converting EGG recordings to BIDS physio format without Python.
 - "Importing Your Own Data" section in Getting Started docs.
+- BRM-style preprint (`paper/gastropy_paper.tex`) and JOSS paper draft
+  (`paper/paper.md`).
 
 ### Changed
 
@@ -59,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `brainvision_to_bids` uses `Path.joinpath` for cross-platform path
   construction (fixes Windows compatibility).
 - `gastropy.data` internals now use `read_bids_physio` instead of `np.load`.
-- `pyproject.toml` build artifacts glob updated for BIDS file extensions.
+- `pyproject.toml`: added maintainer field, bumped to Development Status Alpha.
+- Test count: 216 → 297.
 
 ### Removed
 
@@ -110,5 +117,6 @@ Initial public release of GastroPy.
 - **Infrastructure** — Hatch build system, Ruff linting and formatting,
   pre-commit hooks, GitHub Actions for tests/lint/docs.
 
-[Unreleased]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/embodied-computation-group/gastropy/releases/tag/v0.1.0

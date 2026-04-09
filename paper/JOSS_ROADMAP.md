@@ -16,32 +16,32 @@ is approximately **August 2026**.
 - [x] Add GitHub issue templates (bug report, feature request)
 - [x] Add GitHub pull request template
 - [x] Add author email, affiliation, and ORCID to `pyproject.toml` and `CITATION.cff`
-- [ ] Create tagged `v0.1.0` release on GitHub
-- [ ] Open issues for planned work (`io`, `stats`, `eeg`/`meg` modules)
+- [x] Create tagged `v0.1.0` release on GitHub
+- [ ] Open issues for planned work (`stats`, `eeg`/`meg` modules)
 - [ ] Register repository on Zenodo for automatic DOI minting
 
 ## Phase 2 — Paper Draft (months 1-2)
 
 - [x] Write skeleton `paper.md` (750-1750 words) with required JOSS sections
 - [x] Write `paper.bib` with key references
-- [ ] Flesh out Statement of Need (gap in Python EGG tooling)
-- [ ] Flesh out State of the Field (NeuroKit2, MNE, MATLAB toolboxes)
-- [ ] Flesh out Software Design (layered architecture, composability)
-- [ ] Draft Research Impact Statement (semi_precision pipeline, reproducibility)
-- [ ] Write AI Usage Disclosure
+- [x] Flesh out Statement of Need (gap in Python EGG tooling)
+- [x] Flesh out State of the Field (relationship to existing tools)
+- [x] Flesh out Software Design (layered architecture, composability)
+- [x] Draft Research Impact Statement (semi_precision pipeline, reproducibility)
+- [x] Write AI Usage Disclosure
 - [ ] Iterate with co-authors / reviewers
 
 ## Phase 3 — Sustained Development (months 1-6)
 
 Use issues and pull requests for **all** changes from here forward.
 
-- [ ] Implement `gastropy.io` (data I/O, BIDS reader)
+- [x] Implement `gastropy.io` (data I/O, BIDS reader)
 - [ ] Implement `gastropy.stats` (statistical testing utilities)
+- [x] Release v0.1.1 (multichannel, ICA, preprocessing, BIDS I/O)
 - [ ] Release v0.2.0 (new features)
-- [ ] Release v0.x.y bugfix releases as needed
 - [ ] Seek early adopters and collect feedback via issues
-- [ ] Optional: publish preprint to establish research impact
-- [ ] Optional: recruit co-authors who contribute code, methodology, or testing
+- [x] Publish preprint (`paper/gastropy_paper.tex`)
+- [ ] Recruit co-authors who contribute code, methodology, or testing
 
 ## Phase 4 — Pre-Submission (~month 5-6)
 
