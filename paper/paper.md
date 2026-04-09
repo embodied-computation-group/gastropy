@@ -63,24 +63,16 @@ reliability and validity of these coupling measures [@Levakov2023]. Beyond
 neuroscience, wearable EGG devices are being explored for affect detection
 and emotion regulation applications [@Vujic2020].
 
-Despite this growth, the field lacks a dedicated, open-source Python package
-for EGG analysis. Researchers typically rely on custom MATLAB scripts
-[@Banellis2025], ad hoc Python code, or general-purpose biosignal toolkits
-that offer limited EGG-specific functionality. This fragmentation impedes
-reproducibility, slows adoption by new labs, and makes it difficult to compare
-results across studies that use different analysis pipelines.
-
-Existing Python packages address adjacent needs but leave significant gaps.
-NeuroKit2 [@Makowski2021] provides general biosignal processing with basic EGG
-support, but lacks multi-channel selection, gastric-brain coupling pipelines,
-and EGG-specific artifact detection. MNE-Python [@Gramfort2013] excels at EEG
-and MEG analysis but does not target the low-frequency (0.01--0.1 Hz) gastric
-rhythm. Related packages such as Systole [@Legrand2020] and HeartPy
-[@vanGent2019] demonstrate the value of domain-specific biosignal toolkits but
-focus exclusively on cardiac signals. MATLAB toolboxes such as the
-StomachBrain pipeline [@Banellis2025] are not accessible to the growing number
-of researchers working in Python, and their monolithic design limits
-reusability.
+Despite this growth, no dedicated, open-source Python package for EGG
+analysis currently exists. Researchers typically rely on custom MATLAB scripts
+[@Wolpert2020; @Banellis2025], ad hoc Python code, or general-purpose
+biosignal toolkits not designed for the gastric slow wave. NeuroKit2
+[@Makowski2021] provides general biosignal processing with basic EGG support,
+MNE-Python [@Gramfort2013] targets EEG and MEG, and domain-specific packages
+such as Systole [@Legrand2020] and HeartPy [@vanGent2019] serve the cardiac
+community. The electrography tutorial of @Anisimova2025 provides a valuable
+standalone EGG pipeline with ICA-based denoising, but does not address
+gastric-brain coupling or neuroimaging integration.
 
 GastroPy fills this gap by providing:
 
@@ -102,30 +94,18 @@ GastroPy is intended for neuroscientists, gastroenterologists, and
 psychophysiology researchers who work with EGG data, whether standalone or
 concurrent with fMRI, EEG, or MEG.
 
-# State of the Field
-
-\autoref{tab:comparison} summarizes the capabilities of existing tools
-relative to GastroPy.
-
-| Package | Language | EGG Pipeline | Multi-channel | Coupling | Artifact Detection |
-|---------|----------|-------------|---------------|----------|--------------------|
-| GastroPy | Python | Full | Yes (ICA + best-ch) | PLV + surrogates | Phase + preprocessing |
-| NeuroKit2 | Python | Basic | No | No | General |
-| MNE-Python | Python | No | N/A | No | EEG/MEG-focused |
-| StomachBrain | MATLAB | Partial | No | PLV | No |
-
-: Comparison of EGG analysis tools. {#tab:comparison}
-
-We chose to build a new package rather than contribute to an existing one
-because the EGG processing pipeline requires domain-specific decisions
-(frequency bands, cycle detection, phase artifact criteria) that are difficult
-to retrofit into general-purpose toolkits. The gastric slow wave occupies a
-unique frequency range (0.03--0.07 Hz) that falls below the passband of most
-electrophysiology tools, and its coupling with brain signals requires
-specialized windowing and surrogate testing procedures. GastroPy's layered
-architecture isolates core DSP from neuroimaging-specific logic, making it
-usable both as a standalone EGG toolkit and as a component in multimodal
-brain-body pipelines.
+GastroPy is, to our knowledge, the first dedicated Python package for EGG
+signal processing and gastric-brain coupling analysis. It builds on and
+complements existing tools---integrating the preprocessing pipeline of
+@Anisimova2025 as a named method variant, and drawing on the domain-specific
+toolkit philosophy demonstrated by packages such as Systole [@Legrand2020]
+and HeartPy [@vanGent2019] in the cardiac domain. The gastric slow wave
+occupies a unique frequency range (0.03--0.07 Hz) that falls below the
+passband of most electrophysiology tools, and its coupling with brain signals
+requires specialized windowing and surrogate testing procedures. GastroPy's
+layered architecture isolates core DSP from neuroimaging-specific logic,
+making it usable both as a standalone EGG toolkit and as a component in
+multimodal brain-body pipelines.
 
 # Software Design
 
@@ -182,14 +162,13 @@ function.
 
 GastroPy's core algorithms were developed and validated in the context of
 published research on gastric-brain coupling and interoception. The signal
-processing pipeline was ported from analysis code used in studies of precision
-and brain-gut interaction, and the coupling module implements the PLV
-methodology described in @Banellis2025, which demonstrated that frontoparietal
-brain coupling to the gastric rhythm indexes a dimensional signature of mental
-health across 243 participants. The artifact detection algorithms follow the
-phase-based criteria established by @Wolpert2020 in a large normative sample
-(N=117), while the spectral analysis parameters align with clinical EGG
-guidelines [@Chang2005; @Yin2013; @ChenMcCallum1991].
+processing pipeline was ported from analysis code used in studies of brain-gut
+interaction [@Banellis2025], and the coupling module implements PLV
+methodology used in concurrent EGG-fMRI research. The artifact detection
+algorithms follow the phase-based criteria established by @Wolpert2020 in a
+large normative sample (N=117), the preprocessing pipeline integrates methods
+from @Anisimova2025 and @Gharibans2018, and the spectral analysis parameters
+align with clinical EGG guidelines [@Chang2005; @Yin2013; @ChenMcCallum1991].
 
 The package is designed to support reproducible research by providing tested,
 documented implementations of methods that are currently scattered across

@@ -73,25 +73,21 @@ and resting-state brain networks, opening a new window into brain-body
 interactions, interoception, and mental health. Despite growing interest, the
 field lacks a dedicated, open-source software toolkit for EGG analysis in
 Python. Here we present GastroPy, a modular Python package for EGG signal
-processing and gastric-brain coupling analysis. GastroPy provides a complete
-analysis pipeline spanning spectral analysis, bandpass filtering,
-instantaneous phase extraction, cycle-level metrics, multi-channel selection
-and processing (including ICA-based spatial denoising), time-domain
-preprocessing (Hampel filtering, MAD outlier removal, LMMSE movement artifact
-attenuation), phase-based artifact detection, time-frequency decomposition,
-and phase-locking value (PLV) computation. Named method variants (e.g.,
-\texttt{dalmaijer2025}) provide citable, reproducible preprocessing pipelines.
-A dedicated neuroimaging sub-module supports scanner trigger alignment,
-confound regression, voxelwise BOLD phase extraction, and whole-brain PLV map
-generation for concurrent EGG-fMRI data.
-The package is built on NumPy and SciPy with optional MNE-Python and nilearn
-\citep{Abraham2014} integration, features a layered architecture that separates core signal
-processing from neuroimaging workflows, and includes bundled sample data for
-tutorials and testing. We describe GastroPy's design philosophy, demonstrate
-its capabilities through two worked examples (standalone EGG processing and
-fMRI-EGG coupling), and discuss its role in the emerging ecosystem of
-brain-body analysis tools. GastroPy is freely available under the MIT license
-at \url{https://github.com/embodied-computation-group/gastropy}.
+processing and gastric-brain coupling analysis. GastroPy provides a full
+EGG processing pipeline---spectral analysis, bandpass filtering, phase
+extraction, cycle-level metrics, and phase-based artifact
+detection---together with multichannel processing via ICA-based spatial
+denoising, time-domain preprocessing for spike and movement artifact removal,
+and time-frequency decomposition. A dedicated neuroimaging module supports
+the complete EGG-fMRI coupling workflow: scanner trigger alignment, confound
+regression, voxelwise BOLD phase extraction, and whole-brain phase-locking
+value (PLV) mapping with surrogate-based statistical testing. The package
+supports named, citable preprocessing pipelines for reproducibility across
+labs. Built on NumPy and SciPy with optional MNE-Python and nilearn
+\citep{Abraham2014} integration, GastroPy separates core signal processing
+from neuroimaging workflows and includes bundled sample data for tutorials
+and testing. GastroPy is freely available under the MIT license at
+\url{https://github.com/embodied-computation-group/gastropy}.
 \end{abstract}
 
 \onehalfspacing
@@ -105,8 +101,8 @@ The stomach generates a continuous electrical slow wave at approximately 0.05
 Hz (3 cycles per minute) that originates in the interstitial cells of Cajal
 (ICC) located in the myenteric plexus of the gastric corpus, and propagates
 distally through the antrum to coordinate gastric motility
-\citep{Koch2004, ChenMcCallum1991}. This omnipresent rhythm---present in both
-fasting and postprandial states---serves as the pacemaker signal that triggers
+\citep{Koch2004, ChenMcCallum1991}. This rhythm, present in both
+fasting and postprandial states, serves as the pacemaker signal that triggers
 smooth muscle contraction and governs the mixing and propulsion of gastric
 contents. The gastric slow wave can be recorded non-invasively using
 electrogastrography (EGG), a technique in which cutaneous electrodes placed on
@@ -122,75 +118,55 @@ Clinical EGG has been used for decades to assess gastric dysrhythmias
 motility disorders \citep{Koch2004}. Standard clinical parameters include the
 dominant frequency, percentage of recording time in the normal 2--4 cycles per
 minute (cpm) range, the power ratio between pre- and postprandial recordings,
-and the instability coefficient quantifying rhythm regularity. However, the
-technique has recently attracted renewed interest from the neuroscience and
-psychophysiology communities, driven by discoveries of gastric-brain
-interactions that may have implications far beyond gastroenterology.
+and the instability coefficient quantifying rhythm regularity. More recently,
+the technique has attracted interest from neuroscience and psychophysiology,
+driven by discoveries of gastric-brain interactions, and from affective
+computing, where wearable EGG devices have been explored for affect detection
+\citep{Vujic2020}.
 
-A landmark study by \citet{Rebollo2018} demonstrated that the gastric rhythm
-is phase-synchronized with resting-state fMRI activity in a distributed
-``gastric network'' spanning somatosensory, motor, visual, and parietal
-cortices. Using concurrent EGG and fMRI in healthy participants, they showed
-that the phase of the gastric slow wave predicts fluctuations in the BOLD
-signal at specific brain regions, with a precise temporal sequence of
-activations within each gastric cycle. This finding was subsequently replicated
-and extended by \citet{Choe2021}, who used spatial independent component
-analysis (ICA) to show that at least three resting-state networks---cerebellar,
-dorsal somatosensory-motor, and default mode---exhibit significant
-phase-locking with the gastric basal electrical rhythm. \citet{Levakov2023}
-further characterized the reliability and confound sensitivity of
-gastric-brain coupling measures, demonstrating that head motion and
-non-grey-matter signals can substantially inflate the spatial extent of the
-gastric network if not properly controlled. \citet{Berther2026} used
-high-resolution MEG and high-density EGG to provide the first comprehensive
-spatiotemporal mapping of gastric-brain coupling at rest, revealing broadband
-phase-amplitude coupling across delta, theta, alpha, and beta bands and
-identifying distinct spatiospectral fingerprints that overlap with the
-fMRI-based gastric network. Most recently,
-\citet{Banellis2025} demonstrated that frontoparietal brain coupling to the
-gastric rhythm indexes a dimensional signature of mental health, with
-cross-validated machine learning revealing that increased gastric-brain
-coupling in frontoparietal regions predicts poorer anxiety, depression, stress,
-and well-being across 243 participants.
+Concurrent EGG-fMRI recordings have revealed that the gastric rhythm is
+phase-synchronized with resting-state brain activity. \citet{Rebollo2018}
+identified a distributed ``gastric network'' spanning somatosensory, motor,
+visual, and parietal cortices, showing that the phase of the slow wave
+predicts BOLD fluctuations with a precise temporal sequence within each
+gastric cycle. \citet{Choe2021} replicated and extended this finding using
+spatial ICA, identifying at least three phase-locked resting-state
+networks---cerebellar, dorsal somatosensory-motor, and default mode.
+\citet{Banellis2025} showed that frontoparietal gastric-brain coupling indexes
+a dimensional signature of mental health across 243 participants. Most
+recently, \citet{Berther2026} used high-resolution MEG and high-density EGG to
+map gastric-brain coupling at rest across multiple frequency bands, revealing
+broadband phase-amplitude coupling and spatiospectral fingerprints that
+overlap with the fMRI-based gastric network.
 
-Alongside these neuroscience applications, \citet{Wolpert2020} established
-practical recording and analysis guidelines for EGG in psychophysiology
-research, providing normative data from a large healthy sample (N = 117) and a
-semi-automated MATLAB analysis pipeline that has become a de facto standard for
-EGG data processing. Their pipeline includes electrode placement
-recommendations, signal quality assessment criteria, and a multi-step analysis
-workflow from raw recording to phase and power extraction. Wearable EGG devices
-have also been explored for affect detection and emotion regulation
-applications \citep{Vujic2020}, demonstrating that gastric signals carry
-affective information complementary to other autonomic measures and further
-expanding the potential user base for EGG analysis tools.
+As the field has grown, methodological work has established foundations for
+rigorous analysis. \citet{Wolpert2020} provided normative EGG data from a
+large healthy sample (N = 117) and a semi-automated MATLAB pipeline covering
+electrode placement, quality assessment, and multi-step analysis from raw
+recording to phase and power extraction. \citet{Levakov2023} characterized the
+confound sensitivity of gastric-brain coupling, demonstrating that head motion
+and non-grey-matter signals can inflate the spatial extent of the gastric
+network if not controlled. \citet{Anisimova2025} introduced an open-source
+Python pipeline for standalone EGG with ICA-based denoising and artifact
+rejection. Yet no existing package covers the full workflow from raw EGG
+through gastric-brain coupling with fMRI. Researchers typically rely on custom
+MATLAB scripts \citep{Wolpert2020, Banellis2025}, ad hoc Python code, or
+general-purpose toolkits---NeuroKit2 \citep{Makowski2021} for biosignal
+processing, MNE-Python \citep{Gramfort2013} for EEG and MEG---none of which
+target the gastric slow wave's low frequency range and long cycle durations.
+Domain-specific packages such as Systole \citep{Legrand2020} and HeartPy
+\citep{vanGent2019} serve the cardiac community but not gastric physiology.
 
-Despite this growth, the field currently lacks a dedicated, open-source Python
-package for EGG analysis. Researchers typically rely on custom MATLAB scripts,
-ad hoc Python code, or general-purpose biosignal toolkits that were not
-designed for the unique characteristics of the gastric slow wave. NeuroKit2
-\citep{Makowski2021} provides broad biosignal processing capabilities with
-basic EGG support but lacks multi-channel selection, gastric-brain coupling
-pipelines, and EGG-specific artifact detection. MNE-Python
-\citep{Gramfort2013} is the de facto standard for EEG and MEG analysis but
-does not target the low-frequency range occupied by the gastric rhythm. Domain-specific
-biosignal packages such as Systole \citep{Legrand2020} and HeartPy
-\citep{vanGent2019} demonstrate the value of focused toolkits but address
-cardiac rather than gastric signals. MATLAB toolboxes such as the StomachBrain
-pipeline \citep{Banellis2025} are not accessible to the growing number of
-researchers working in Python, and their monolithic architectures limit
-component reusability.
-
-Here we present GastroPy, an open-source Python package that provides a
-complete, modular toolkit for EGG signal processing and gastric-brain coupling
-analysis. GastroPy is designed around three principles: (1) domain specificity,
-with frequency bands, filtering parameters, and artifact criteria tailored to
-the gastric slow wave; (2) modularity, with a layered architecture that
-separates core DSP from neuroimaging-specific logic; and (3) interoperability,
-with all functions operating on standard NumPy arrays and pandas DataFrames. In
-what follows, we describe the package's design philosophy and architecture,
-demonstrate its capabilities through two worked examples, and discuss its role
-in the emerging ecosystem of brain-body analysis tools.
+Here we present GastroPy, an open-source Python package for EGG signal
+processing and gastric-brain coupling analysis. GastroPy is designed around
+three principles: (1) domain specificity, with frequency bands, filtering
+parameters, and artifact criteria tailored to the gastric slow wave;
+(2) modularity, with a layered architecture that separates core DSP from
+neuroimaging-specific logic; and (3) interoperability, with all functions
+operating on standard NumPy arrays and pandas DataFrames. We describe the
+package's design philosophy and architecture, demonstrate its capabilities
+through two worked examples, and discuss its place in the emerging ecosystem
+of brain-body analysis tools.
 
 % ============================================================================
 % 2. DESIGN PHILOSOPHY
@@ -199,9 +175,9 @@ in the emerging ecosystem of brain-body analysis tools.
 
 \subsection{Guiding Principles}
 
-GastroPy's design is guided by four principles drawn from best practices in
-scientific Python software development, particularly the approaches pioneered
-by NeuroKit2 \citep{Makowski2021} and MNE-Python \citep{Gramfort2013}:
+GastroPy's design follows four principles drawn from scientific Python
+software development, particularly the approaches of NeuroKit2
+\citep{Makowski2021} and MNE-Python \citep{Gramfort2013}:
 
 \begin{enumerate}
   \item \textbf{Domain-specific defaults with full parameter control.} All
@@ -306,18 +282,14 @@ GastroPy defines three standard gastric frequency bands as named constants in
   \item \textbf{Tachygastria}: 0.07--0.17 Hz (4.2--10.2 cycles per minute)
 \end{itemize}
 
-These bands follow established clinical conventions
-\citep{Koch2004, Chang2005, Yin2013} and serve as defaults throughout the
-package while remaining fully configurable via the \texttt{GastricBand}
-named tuple.
+These bands follow clinical conventions \citep{Koch2004, Chang2005, Yin2013}
+and serve as defaults throughout the package, configurable via the
+\texttt{GastricBand} named tuple.
 
 % ============================================================================
 % 3. KEY ALGORITHMS
 % ============================================================================
 \section{Key Algorithms and Methods}
-
-This section describes the core signal processing and statistical methods
-implemented in GastroPy.
 
 \subsection{Spectral Analysis}
 
@@ -784,68 +756,39 @@ print(f"Rayleigh z = {z_stat:.2f}, p = {p_value:.4f}")
 \end{lstlisting}
 
 % ============================================================================
-% 6. COMPARISON WITH EXISTING TOOLS
+% 6. RELATIONSHIP TO EXISTING TOOLS
 % ============================================================================
-\section{Comparison with Existing Tools}
+\section{Relationship to Existing Tools}
 
-Table~\ref{tab:comparison} compares GastroPy's capabilities with existing EGG
-analysis tools.
+GastroPy is, to our knowledge, the first dedicated Python package for EGG
+signal processing and gastric-brain coupling analysis. Existing tools address
+adjacent needs: NeuroKit2 \citep{Makowski2021} provides general biosignal
+processing with basic EGG support, MNE-Python \citep{Gramfort2013} is the
+standard for EEG and MEG analysis, and domain-specific packages such as
+Systole \citep{Legrand2020} and HeartPy \citep{vanGent2019} serve the cardiac
+community. The electrography tutorial of \citet{Anisimova2025} provides a
+standalone EGG processing pipeline with ICA-based denoising, elements
+of which are integrated into GastroPy as the \texttt{"dalmaijer2025"} named
+method variant. GastroPy complements these tools by providing
+a pipeline from raw EGG to gastric-brain coupling maps, with
+domain-specific defaults, multi-channel processing strategies, and a layered
+architecture separating core signal processing from neuroimaging workflows.
 
-\begin{table}[htbp]
-\centering
-\caption{Comparison of EGG analysis tools across key features. PLV = phase-locking value.}
-\label{tab:comparison}
-\begin{tabular}{lccccc}
-\toprule
-\textbf{Feature} & \textbf{GastroPy} & \textbf{NeuroKit2} & \textbf{MNE-Python} & \textbf{StomachBrain} \\
-\midrule
-Language & Python & Python & Python & MATLAB \\
-EGG pipeline & Full & Basic & No & Partial \\
-Multi-channel processing & ICA + best-ch & No & N/A & No \\
-Preprocessing filters & Hampel/MAD/LMMSE & General & EEG-focused & No \\
-ICA denoising & Yes (FastICA) & No & Yes (EEG) & No \\
-Phase artifact detection & Yes & No & EEG-focused & No \\
-Gastric-brain coupling & PLV + surr. & No & No & PLV \\
-Named method variants & Yes & No & N/A & No \\
-Time-frequency analysis & Yes & Yes & Yes & No \\
-Bundled EGG data & Yes & No & No & No \\
-Quality assessment & Automated & No & N/A & Manual \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-GastroPy addresses several gaps not filled by existing tools. Unlike
-NeuroKit2 \citep{Makowski2021}, which provides general biosignal processing
-with basic EGG support (single-channel filtering and PSD), GastroPy offers a
-complete EGG-specific pipeline including multi-channel selection, phase-based
-artifact detection following \citet{Wolpert2020}, automated quality
-assessment, and the full gastric-brain coupling workflow. Unlike MNE-Python
-\citep{Gramfort2013}, which excels at high-frequency electrophysiology (EEG,
-MEG) but does not target the gastric frequency range, GastroPy's filtering
-and spectral analysis are optimized for the ultra-low-frequency (0.01--0.2
-Hz) domain of gastric signals. Unlike the MATLAB-based StomachBrain pipeline
-\citep{Banellis2025}, GastroPy provides a modular, pip-installable Python
-package with a composable API, bundled test data, and continuous integration.
-
-We chose to develop a standalone package rather than contribute EGG-specific
-functionality to an existing project because the gastric slow wave has unique
-characteristics that require domain-specific design decisions throughout the
-analysis chain. The gastric rhythm occupies a frequency range (0.03--0.07 Hz)
-that falls below the default filter settings of most electrophysiology
-toolkits. Its long cycle duration (15--30 seconds) requires specialized
-windowing parameters for spectral analysis, and the coupling with brain
-signals requires fMRI-specific preprocessing (trigger alignment, confound
-regression) that is outside the scope of general biosignal packages. GastroPy's
-layered architecture makes it straightforward to use the core EGG processing
-modules independently of the neuroimaging layer, and its standard array-based
-API ensures interoperability with the broader scientific Python ecosystem.
+The gastric slow wave occupies a unique frequency range (0.03--0.07 Hz) that
+falls below the default settings of most electrophysiology toolkits, and its
+coupling with brain signals requires fMRI-specific preprocessing (trigger
+alignment, confound regression) outside the scope of general biosignal
+packages. GastroPy's standard array-based API ensures interoperability with
+the broader scientific Python ecosystem, and its modular design allows
+researchers to use individual functions as building blocks within custom
+pipelines.
 
 % ============================================================================
 % 7. TESTING AND QUALITY ASSURANCE
 % ============================================================================
 \section{Testing and Quality Assurance}
 
-GastroPy maintains a comprehensive automated test suite of 297 tests covering
+GastroPy maintains an automated test suite of 297 tests covering
 all public functions across every module. Tests verify signal processing
 correctness (e.g., that bandpass filtering preserves in-band energy while
 attenuating out-of-band frequencies), metric computation accuracy (e.g., that
@@ -866,11 +809,11 @@ reproducible without network access.
 % ============================================================================
 \section{Discussion}
 
-GastroPy provides the first dedicated, open-source Python package for
+GastroPy is the first dedicated, open-source Python package for
 electrogastrography signal processing and gastric-brain coupling analysis. By
-consolidating methods that were previously scattered across lab-specific
+consolidating methods previously scattered across lab-specific
 MATLAB scripts and ad hoc Python code into a tested, documented, and
-pip-installable package, GastroPy aims to lower the barrier to rigorous EGG
+pip-installable package, it aims to lower the barrier to rigorous EGG
 analysis and accelerate research on the brain-gut axis.
 
 \subsection{Current Capabilities and Use Cases}
@@ -886,96 +829,84 @@ combinations of artifact removal and filtering steps. The multichannel
 processing module offers three strategies for multi-electrode recordings,
 including ICA-based denoising that reduces researcher bias inherent in manual
 channel selection \citep{Anisimova2025}. The modular architecture allows each
-function to be used independently, enabling researchers to build custom
-pipelines tailored to their specific experimental designs while benefiting
-from validated, tested implementations of standard analysis steps.
+function to be used independently, so researchers can build custom
+pipelines tailored to their experimental designs while relying on
+tested implementations of standard analysis steps.
 
-GastroPy is designed to serve several overlapping user communities.
-\emph{Neuroscientists} studying brain-body interactions can use the complete
-EGG-fMRI coupling pipeline to generate whole-brain PLV maps and identify
-brain regions synchronized with the gastric rhythm.
-\emph{Psychophysiologists} conducting standalone EGG studies can use the core
-processing pipeline for spectral analysis, rhythm characterization, and
-artifact detection without requiring any neuroimaging dependencies.
-\emph{Clinical researchers} investigating gastric motility disorders can
-leverage the automated quality assessment and multi-band decomposition to
-characterize dysrhythmias across the bradygastric, normogastric, and
-tachygastric ranges. \emph{Methods developers} building novel analysis
-pipelines can use individual functions (e.g., phase extraction, PLV
-computation, surrogate generation) as composable building blocks within their
-own workflows.
+GastroPy serves several overlapping user communities. Neuroscientists
+studying brain-body interactions can use the EGG-fMRI coupling pipeline to
+generate whole-brain PLV maps. Psychophysiologists conducting standalone EGG
+studies can use the core processing modules for spectral analysis, rhythm
+characterization, and artifact detection without neuroimaging dependencies.
+Clinical researchers investigating motility disorders can use the automated
+quality assessment and multi-band decomposition to characterize dysrhythmias.
+The composable function-level API also supports methods developers who need
+individual operations (e.g., phase extraction, PLV computation, surrogate
+generation) as building blocks within custom pipelines.
 
-The bundled sample data---three fMRI-EGG sessions from a concurrent recording
+Bundled sample data (three fMRI-EGG sessions from a concurrent recording
 study and one standalone EGG recording from the \citet{Wolpert2020} normative
-dataset---provides immediate access to realistic data for learning, testing,
-and benchmarking, without requiring researchers to acquire or share their own
+dataset) provides immediate access to realistic data for tutorials, testing,
+and benchmarking without requiring researchers to acquire or share their own
 recordings. Larger preprocessed fMRI BOLD datasets are available via the
 \texttt{fetch\_fmri\_bold} function, which downloads data from GitHub Releases
 using the Pooch library for reliable, cached retrieval.
 
 \subsection{Reproducibility Considerations}
 
-A core motivation for GastroPy is to improve reproducibility in EGG research.
-Currently, many labs use custom analysis scripts that are not publicly
-available, may contain undocumented parameter choices, and are difficult to
-verify or replicate. By providing a tested, documented, and version-controlled
-implementation of standard EGG analysis methods, GastroPy enables researchers
-to report their analysis parameters precisely (e.g., by referencing specific
-function names and parameter values) and to share complete, executable analysis
-pipelines alongside their publications.
+A core motivation for GastroPy is improving reproducibility in EGG research.
+Many labs use custom analysis scripts that are not publicly available, contain
+undocumented parameter choices, and are difficult to verify or replicate. A
+tested, documented, and version-controlled implementation of standard methods
+enables researchers to report their analysis parameters precisely (e.g., by
+referencing specific function names and parameter values) and to share
+executable analysis pipelines alongside their publications.
 
 All stochastic operations in GastroPy (surrogate generation for PLV testing)
 accept explicit random seeds, ensuring bitwise reproducibility. The package
-pins minimum dependency versions and is continuously tested on multiple
-platforms via GitHub Actions. The automated test suite of 297 tests provides
+pins minimum dependency versions and is tested on multiple
+platforms via GitHub Actions. The 297-test suite provides
 regression protection against inadvertent changes to algorithm behavior across
 releases.
 
 \subsection{Limitations and Future Directions}
 
-Several limitations of the current release should be noted. First, the
-coupling module currently supports only the PLV metric; future releases will
-add additional coupling measures such as amplitude-phase coupling, coherence,
-and information-theoretic metrics, along with group-level statistical testing
-for multi-subject studies (e.g., permutation-based cluster correction for PLV
-maps). Second, while the core signal processing modules are modality-agnostic,
-the neuroimaging layer currently supports only fMRI; planned extensions include
-EEG-EGG and MEG-EGG coupling via the \texttt{gastropy.neuro.eeg} and
-\texttt{gastropy.neuro.meg} submodules, which will leverage MNE-Python's
-existing infrastructure for high-frequency electrophysiology data. Third, the
-package does not yet include fully BIDS-compatible data loading, though
-preliminary I/O support for BrainVision, EDF, and CSV formats is available in
-the \texttt{gastropy.io} module. Fourth, while the current release includes ICA-based spatial denoising for
-multi-channel recordings and three composable time-domain preprocessing
-filters, the phase-based artifact detection approach operates at the cycle
+The current release has several limitations. The coupling module supports
+only the PLV metric; future releases will add amplitude-phase coupling,
+coherence, and information-theoretic metrics, along with group-level
+statistical testing (e.g., permutation-based cluster correction for PLV maps).
+The neuroimaging layer supports only fMRI; planned extensions include EEG-EGG
+and MEG-EGG coupling via \texttt{gastropy.neuro.eeg} and
+\texttt{gastropy.neuro.meg}, using MNE-Python's infrastructure for
+high-frequency electrophysiology data. The package does not yet include fully
+BIDS-compatible data loading, though preliminary I/O support for BrainVision,
+EDF, and CSV formats is available in \texttt{gastropy.io}. Finally, while the
+current release includes ICA-based spatial denoising and three composable
+time-domain preprocessing filters, artifact detection operates at the cycle
 level; future work may incorporate continuous artifact scoring and automated
 channel interpolation.
 
-We also plan to expand the sample data library with additional recordings
-spanning different experimental conditions (fasting vs. postprandial, clinical
-populations, pharmacological challenges), develop interactive tutorials as
-Jupyter notebooks demonstrating common analysis workflows, and establish
-cross-validation benchmarks against existing MATLAB implementations to
-quantify numerical agreement. Integration with complementary biosignal
-packages such as Systole \citep{Legrand2020} for cardiac-gastric interaction
-analysis represents another promising direction for multimodal brain-body
-research.
+We also plan to expand the sample data with recordings from additional
+experimental conditions (fasting vs. postprandial, clinical populations,
+pharmacological challenges), develop Jupyter notebook tutorials for common
+workflows, and establish cross-validation benchmarks against existing MATLAB
+implementations. Integration with Systole \citep{Legrand2020} for
+cardiac-gastric interaction analysis is another planned direction.
 
 \subsection{Conclusion}
 
-GastroPy fills a critical gap in the scientific Python ecosystem by providing
-the first dedicated toolkit for electrogastrography signal processing and
-gastric-brain coupling analysis. Its modular architecture, domain-specific
-defaults, comprehensive test suite, and bundled sample data make it accessible
-to both newcomers to EGG analysis and experienced researchers transitioning
-from MATLAB-based workflows. By consolidating validated implementations of
-EGG analysis methods into a single, well-documented package, GastroPy aims to
-reduce the methodological variability that currently limits cross-study
-comparisons and to accelerate the adoption of best practices in gastric-brain
-coupling research. As interest in the brain-gut axis continues to grow across
-neuroscience, psychiatry, gastroenterology, and human-computer interaction, we
-hope that GastroPy will serve as a foundation for reproducible, collaborative
-research on gastric-brain interactions and their role in health and disease.
+GastroPy fills a gap in the scientific Python ecosystem: no dedicated toolkit
+for electrogastrography signal processing and gastric-brain coupling existed
+in Python until now. Its modular architecture, domain-specific defaults, test
+suite, and bundled sample data make it accessible to both newcomers to EGG
+analysis and experienced researchers transitioning from MATLAB-based
+workflows. By consolidating validated implementations into a single,
+documented package, GastroPy aims to reduce the methodological variability
+that limits cross-study comparisons and to support the adoption of best
+practices in gastric-brain coupling research. As interest in the brain-gut
+axis grows across neuroscience, psychiatry, gastroenterology, and
+human-computer interaction, we hope GastroPy will serve as a foundation for
+reproducible, collaborative research on gastric-brain interactions.
 
 % ============================================================================
 % AI USAGE DISCLOSURE
