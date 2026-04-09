@@ -37,6 +37,26 @@ import through signal processing to advanced gastric-brain coupling analyses.
 
    contributing
 
+Citation
+========
+
+If you use GastroPy in your research, please cite the preprint:
+
+   Allen, M. (2026). GastroPy: An Open-Source Python Toolbox for Electrogastrography
+   Signal Processing and Gastric-Brain Coupling Analysis. *PsyArXiv*.
+   https://osf.io/preprints/psyarxiv/74urp_v1/
+
+.. code-block:: bibtex
+
+   @article{Allen2026gastropy,
+     title   = {GastroPy: An Open-Source Python Toolbox for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis},
+     author  = {Allen, Micah},
+     year    = {2026},
+     journal = {PsyArXiv},
+     doi     = {10.31234/osf.io/74urp_v1},
+     url     = {https://osf.io/preprints/psyarxiv/74urp_v1/}
+   }
+
 Indices and tables
 ==================
 
