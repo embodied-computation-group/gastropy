@@ -48,25 +48,12 @@
   Signal Processing and Gastric-Brain Coupling Analysis}
 
 \author{
-  Micah Allen\textsuperscript{1,2,*},
-  Daniel Kluger\textsuperscript{3},
-  Leah Banellis\textsuperscript{1,2},
-  Ignacio Rebollo\textsuperscript{4},\\
-  Nils Kroemer\textsuperscript{5},
-  Edwin Dalmaijer\textsuperscript{6}\\[1em]
+  Micah Allen\textsuperscript{1,2}\\[1em]
   \small\textsuperscript{1}Center of Functionally Integrative Neuroscience,
     Aarhus University, Denmark\\
   \small\textsuperscript{2}Cambridge Psychiatry,
-    University of Cambridge, United Kingdom\\
-  \small\textsuperscript{3}Institute of Biomagnetism and Biosignal Analysis,
-    University of Muenster, Germany\\
-  \small\textsuperscript{4}German Institute for Human Nutrition,
-    Potsdam, Germany\\
-  \small\textsuperscript{5}Department of Psychiatry and Psychotherapy,
-    University of Tuebingen, Germany\\
-  \small\textsuperscript{6}School of Psychology,
-    University of Leeds, United Kingdom\\[0.5em]
-  \small\textsuperscript{*}Corresponding author: \texttt{micah@cfin.au.dk}
+    University of Cambridge, United Kingdom\\[0.5em]
+  \small Corresponding author: \texttt{micah@cfin.au.dk}
 }
 
 \date{}
@@ -88,11 +75,15 @@ field lacks a dedicated, open-source software toolkit for EGG analysis in
 Python. Here we present GastroPy, a modular Python package for EGG signal
 processing and gastric-brain coupling analysis. GastroPy provides a complete
 analysis pipeline spanning spectral analysis, bandpass filtering,
-instantaneous phase extraction, cycle-level metrics, multi-channel selection,
-phase-based artifact detection, time-frequency decomposition, and
-phase-locking value (PLV) computation. A dedicated neuroimaging sub-module
-supports scanner trigger alignment, confound regression, voxelwise BOLD phase
-extraction, and whole-brain PLV map generation for concurrent EGG-fMRI data.
+instantaneous phase extraction, cycle-level metrics, multi-channel selection
+and processing (including ICA-based spatial denoising), time-domain
+preprocessing (Hampel filtering, MAD outlier removal, LMMSE movement artifact
+attenuation), phase-based artifact detection, time-frequency decomposition,
+and phase-locking value (PLV) computation. Named method variants (e.g.,
+\texttt{dalmaijer2025}) provide citable, reproducible preprocessing pipelines.
+A dedicated neuroimaging sub-module supports scanner trigger alignment,
+confound regression, voxelwise BOLD phase extraction, and whole-brain PLV map
+generation for concurrent EGG-fMRI data.
 The package is built on NumPy and SciPy with optional MNE-Python and nilearn
 \citep{Abraham2014} integration, features a layered architecture that separates core signal
 processing from neuroimaging workflows, and includes bundled sample data for
@@ -150,7 +141,12 @@ phase-locking with the gastric basal electrical rhythm. \citet{Levakov2023}
 further characterized the reliability and confound sensitivity of
 gastric-brain coupling measures, demonstrating that head motion and
 non-grey-matter signals can substantially inflate the spatial extent of the
-gastric network if not properly controlled. Most recently,
+gastric network if not properly controlled. \citet{Berther2026} used
+high-resolution MEG and high-density EGG to provide the first comprehensive
+spatiotemporal mapping of gastric-brain coupling at rest, revealing broadband
+phase-amplitude coupling across delta, theta, alpha, and beta bands and
+identifying distinct spatiospectral fingerprints that overlap with the
+fMRI-based gastric network. Most recently,
 \citet{Banellis2025} demonstrated that frontoparietal brain coupling to the
 gastric rhythm indexes a dimensional signature of mental health, with
 cross-validated machine learning revealing that increased gastric-brain
@@ -243,9 +239,9 @@ GastroPy is organized into seven modules arranged in two layers
 \toprule
 \textbf{Layer} & \textbf{Module} & \textbf{Description} \\
 \midrule
-Core & \texttt{gastropy.signal} & PSD, filtering, phase extraction, resampling \\
+Core & \texttt{gastropy.signal} & PSD, filtering, phase, preprocessing, ICA, sine fitting \\
      & \texttt{gastropy.metrics} & Band power, instability, cycle statistics \\
-     & \texttt{gastropy.egg} & High-level pipeline, channel selection \\
+     & \texttt{gastropy.egg} & Pipeline, channel selection, multichannel processing \\
      & \texttt{gastropy.timefreq} & Narrowband decomposition, Morlet wavelets \\
      & \texttt{gastropy.coupling} & PLV, circular statistics, surrogates \\
      & \texttt{gastropy.viz} & Publication-ready plotting \\
@@ -260,7 +256,13 @@ The \textbf{core layer} handles all EGG-specific signal processing.
 \texttt{gastropy.signal} provides low-level DSP primitives: power spectral
 density via Welch's method, FIR and IIR bandpass filter design and application,
 Hilbert-based instantaneous phase extraction, signal resampling, cycle edge
-detection, and phase-based artifact detection. \texttt{gastropy.metrics}
+detection, and phase-based artifact detection. It also includes time-domain
+preprocessing functions---Hampel spike removal, MAD outlier rejection, and
+LMMSE movement artifact attenuation \citep{Gharibans2018}---ported from the
+electrography pipeline of \citet{Anisimova2025}, ICA-based spatial denoising
+via FastICA \citep{Pedregosa2011} for multi-channel recordings, and
+least-squares sine fitting for gastric frequency characterization.
+\texttt{gastropy.metrics}
 computes gastric rhythm metrics including band power (peak frequency, maximum
 power, proportional power), the instability coefficient
 \citep{Koch2004}, cycle duration statistics, proportion of normogastric
@@ -269,6 +271,13 @@ into high-level workflows: \texttt{egg\_process} runs a complete
 filter-phase-metrics pipeline in a single call, while
 \texttt{select\_best\_channel} identifies the channel with the strongest
 normogastric rhythm in multi-electrode recordings.
+\texttt{egg\_process\_multichannel} extends this to multi-electrode arrays with
+three strategies: independent per-channel processing, automatic best-channel
+selection, and ICA-based spatial denoising followed by per-channel analysis.
+The \texttt{egg\_clean} function supports named method variants, including
+\texttt{"dalmaijer2025"} \citep{Anisimova2025}, which chains Hampel spike
+removal, LMMSE movement filtering, and IIR Butterworth bandpass filtering into
+a citable, reproducible preprocessing pipeline.
 \texttt{gastropy.timefreq} provides narrowband decomposition via per-band
 filtering and Morlet wavelet time-frequency representations.
 \texttt{gastropy.coupling} implements modality-agnostic circular statistics
@@ -374,6 +383,49 @@ and (2) \emph{duration outlier} cycles, where the cycle duration exceeds a
 configurable threshold (default: 3 standard deviations from the mean).
 Artifact cycles are flagged with a boolean mask that can be used to exclude
 contaminated data from subsequent analyses.
+
+\subsection{Time-Domain Preprocessing}
+
+GastroPy provides three composable preprocessing functions that operate on raw
+EGG signals before bandpass filtering, ported from the electrography pipeline
+of \citet{Anisimova2025}:
+
+\begin{enumerate}
+  \item \textbf{Hampel filter}: A sliding-window median filter that replaces
+    samples exceeding a configurable MAD threshold (default: 3) with the local
+    median. This removes isolated spikes while preserving the underlying slow
+    wave.
+  \item \textbf{MAD filter}: A global median absolute deviation filter that
+    replaces samples exceeding a configurable threshold (default: 3 MAD) with
+    the signal median. This addresses gross outliers spanning multiple samples.
+  \item \textbf{LMMSE movement filter}: A linear minimum mean-square error
+    (Wiener) filter that attenuates movement artifacts by estimating and
+    subtracting correlated noise in the frequency domain
+    \citep{Gharibans2018}. The filter operates by computing a transfer function
+    from the signal's power spectral density and a noise estimate, preserving
+    gastric-band energy while suppressing broadband movement contamination.
+\end{enumerate}
+
+All preprocessing functions accept both 1D (single channel) and 2D
+\texttt{(n\_channels, n\_samples)} arrays, enabling batch processing of
+multi-electrode recordings. These functions are composed into the named method
+variant \texttt{egg\_clean(method="dalmaijer2025")}, which applies Hampel
+filtering, LMMSE movement removal, and IIR bandpass filtering in sequence.
+
+\subsection{ICA-Based Spatial Denoising}
+
+For multi-channel EGG recordings, GastroPy provides ICA-based spatial
+denoising via FastICA decomposition \citep{Pedregosa2011}. The algorithm
+decomposes the multi-channel signal into independent components, computes the
+signal-to-noise ratio (SNR) of each component within the gastric frequency
+band, retains only components whose gastric SNR exceeds a configurable
+threshold, and reconstructs the cleaned signal in channel space. This approach
+recomposes the electrogastrogram from all recorded channels after automatic
+rejection of nuisance components, reducing the influence of researcher bias
+inherent in manual single-channel selection \citep{Anisimova2025}. ICA
+denoising is available both as a standalone function
+(\texttt{gastropy.signal.ica\_denoise}) and as one of the three strategies in
+\texttt{egg\_process\_multichannel}.
 
 \subsection{Phase-Locking Value}
 
@@ -749,9 +801,12 @@ analysis tools.
 \midrule
 Language & Python & Python & Python & MATLAB \\
 EGG pipeline & Full & Basic & No & Partial \\
-Multi-channel selection & Yes & No & N/A & No \\
+Multi-channel processing & ICA + best-ch & No & N/A & No \\
+Preprocessing filters & Hampel/MAD/LMMSE & General & EEG-focused & No \\
+ICA denoising & Yes (FastICA) & No & Yes (EEG) & No \\
 Phase artifact detection & Yes & No & EEG-focused & No \\
 Gastric-brain coupling & PLV + surr. & No & No & PLV \\
+Named method variants & Yes & No & N/A & No \\
 Time-frequency analysis & Yes & Yes & Yes & No \\
 Bundled EGG data & Yes & No & No & No \\
 Quality assessment & Automated & No & N/A & Manual \\
@@ -790,7 +845,7 @@ API ensures interoperability with the broader scientific Python ecosystem.
 % ============================================================================
 \section{Testing and Quality Assurance}
 
-GastroPy maintains a comprehensive automated test suite of 178 tests covering
+GastroPy maintains a comprehensive automated test suite of 297 tests covering
 all public functions across every module. Tests verify signal processing
 correctness (e.g., that bandpass filtering preserves in-band energy while
 attenuating out-of-band frequencies), metric computation accuracy (e.g., that
@@ -821,10 +876,16 @@ analysis and accelerate research on the brain-gut axis.
 \subsection{Current Capabilities and Use Cases}
 
 The package currently supports the full standalone EGG processing workflow
-(spectral analysis, filtering, phase extraction, cycle metrics, artifact
-detection, quality assessment) and the complete EGG-fMRI coupling pipeline
-(trigger alignment, BOLD preprocessing, voxelwise phase extraction, PLV
-mapping with surrogate testing). The modular architecture allows each
+(spectral analysis, time-domain preprocessing, ICA-based spatial denoising,
+bandpass filtering, phase extraction, cycle metrics, artifact detection,
+quality assessment) and the complete EGG-fMRI coupling pipeline (trigger
+alignment, BOLD preprocessing, voxelwise phase extraction, PLV mapping with
+surrogate testing). Named method variants (e.g., \texttt{"dalmaijer2025"})
+provide citable, reproducible preprocessing pipelines that chain specific
+combinations of artifact removal and filtering steps. The multichannel
+processing module offers three strategies for multi-electrode recordings,
+including ICA-based denoising that reduces researcher bias inherent in manual
+channel selection \citep{Anisimova2025}. The modular architecture allows each
 function to be used independently, enabling researchers to build custom
 pipelines tailored to their specific experimental designs while benefiting
 from validated, tested implementations of standard analysis steps.
@@ -866,7 +927,7 @@ pipelines alongside their publications.
 All stochastic operations in GastroPy (surrogate generation for PLV testing)
 accept explicit random seeds, ensuring bitwise reproducibility. The package
 pins minimum dependency versions and is continuously tested on multiple
-platforms via GitHub Actions. The automated test suite of 178 tests provides
+platforms via GitHub Actions. The automated test suite of 297 tests provides
 regression protection against inadvertent changes to algorithm behavior across
 releases.
 
@@ -884,10 +945,11 @@ EEG-EGG and MEG-EGG coupling via the \texttt{gastropy.neuro.eeg} and
 existing infrastructure for high-frequency electrophysiology data. Third, the
 package does not yet include fully BIDS-compatible data loading, though
 preliminary I/O support for BrainVision, EDF, and CSV formats is available in
-the \texttt{gastropy.io} module. Fourth, the current artifact detection
-approach operates at the cycle level; future work may incorporate continuous
-artifact scoring, automated channel interpolation, and integration with
-independent component analysis for artifact removal.
+the \texttt{gastropy.io} module. Fourth, while the current release includes ICA-based spatial denoising for
+multi-channel recordings and three composable time-domain preprocessing
+filters, the phase-based artifact detection approach operates at the cycle
+level; future work may incorporate continuous artifact scoring and automated
+channel interpolation.
 
 We also plan to expand the sample data library with additional recordings
 spanning different experimental conditions (fasting vs. postprandial, clinical
@@ -922,12 +984,12 @@ research on gastric-brain interactions and their role in health and disease.
 
 Generative AI tools were used during the development of GastroPy.
 Specifically, Anthropic Claude (Claude Code CLI, models
-claude-sonnet-4-20250514 and claude-opus-4-20250514) was used for code
+claude-sonnet-4-6 and claude-opus-4-6) was used for code
 generation, test writing, documentation drafting, and debugging across all
 modules. All AI-generated code was reviewed, tested, and validated by the
-authors. Architectural decisions, algorithm selection, and scientific
-methodology were determined by the authors. The automated test suite verifies
-correctness of all implementations. The authors accept full responsibility for
+author. Architectural decisions, algorithm selection, and scientific
+methodology were determined by the author. The automated test suite verifies
+correctness of all implementations. The author accepts full responsibility for
 the accuracy, originality, and licensing of all code and documentation.
 
 % ============================================================================

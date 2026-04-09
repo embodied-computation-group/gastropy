@@ -1,0 +1,67 @@
+%%{ init: { "theme": "base", "themeVariables": { "fontSize": "14px" } } }%%
+flowchart TD
+    egg_in["<b>Raw EGG</b><br/><i>8 channels</i>"]
+    bold_in["<b>Preprocessed BOLD</b><br/><i>4D NIfTI</i>"]
+
+    ch["<b>select_best_channel()</b><br/><i>PSD → peak freq detection</i>"]
+    load["<b>load_bold() + mask</b><br/><i>→ (n_voxels × n_volumes)</i>"]
+
+    bp["<b>apply_bandpass()</b><br/><i>FIR normogastric band</i>"]
+    regress["<b>regress_confounds()</b><br/><i>OLS, 12 motion regressors</i>"]
+
+    ephase["<b>instantaneous_phase()</b><br/><i>Hilbert → analytic signal</i>"]
+    bphase["<b>bold_voxelwise_phases()</b><br/><i>IIR filter @ peak_freq<br/>Hilbert → phase per voxel</i>"]
+
+    windows["<b>create_volume_windows()</b><br/><i>Trigger → (start, end) per TR</i>"]
+    bcuts["<b>apply_volume_cuts()</b><br/><i>Remove 21 transient volumes</i>"]
+
+    pvol["<b>phase_per_volume()</b><br/><i>Mean EGG phase per TR</i>"]
+
+    ecuts["<b>apply_volume_cuts()</b><br/><i>Remove 21 transient volumes</i>"]
+
+    plv["<b>compute_plv_map()</b><br/><i>PLV = |mean(e^iΔφ)| per voxel</i>"]
+
+    surr["<b>compute_surrogate_plv_map()</b><br/><i>Circular time-shifting, n=1000 surrogates</i>"]
+
+    zscore["<b>coupling_zscore()</b><br/><i>z = (PLV − median) / MAD</i>"]
+
+    output["<b>Whole-brain PLV z-map</b><br/><i>→ NIfTI / visualization</i>"]
+
+    egg_in --> ch
+    bold_in --> load
+
+    ch --> bp
+    load --> regress
+
+    bp --> ephase
+    regress --> bphase
+
+    ephase --> windows
+    bphase --> bcuts
+
+    windows --> pvol
+    pvol --> ecuts
+
+    ecuts --> plv
+    bcuts --> plv
+
+    plv --> surr
+    surr --> zscore
+    zscore --> output
+
+    style egg_in fill:#e8e8e8,stroke:#333,stroke-width:1px,color:#333
+    style bold_in fill:#e8e8e8,stroke:#333,stroke-width:1px,color:#333
+    style ch fill:#f08060,stroke:#333,stroke-width:1px,color:#fff
+    style load fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style bp fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style regress fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style ephase fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style bphase fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style windows fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style bcuts fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style pvol fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style ecuts fill:#e8871e,stroke:#333,stroke-width:1px,color:#fff
+    style plv fill:#dc3545,stroke:#333,stroke-width:1px,color:#fff
+    style surr fill:#dc3545,stroke:#333,stroke-width:1px,color:#fff
+    style zscore fill:#dc3545,stroke:#333,stroke-width:1px,color:#fff
+    style output fill:#f5f5dc,stroke:#333,stroke-width:1px,color:#333

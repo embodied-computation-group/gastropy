@@ -1,0 +1,34 @@
+%%{ init: { "theme": "base", "themeVariables": { "fontSize": "14px" } } }%%
+flowchart TD
+    input["<b>Multi-channel EGG</b><br/><i>n_channels × n_samples</i>"]
+
+    ch["<b>select_best_channel()</b><br/><i>PSD (Welch) → peak in normogastric band</i>"]
+
+    clean["<b>egg_clean() → apply_bandpass()</b><br/><i>FIR bandpass [0.033–0.067 Hz], zero-phase filtfilt</i>"]
+
+    phase["<b>instantaneous_phase()</b><br/><i>Hilbert transform → phase ∈ [−π, +π], amplitude</i>"]
+
+    cycles["<b>cycle_durations()</b><br/><i>Phase-wrap detection → cycle durations (s)</i>"]
+
+    artifacts["<b>detect_phase_artifacts()</b><br/><i>Wolpert (2020) criteria: duration outliers<br/>+ non-monotonic phase</i>"]
+
+    metrics["<b>Metric Computation</b><br/><i>instability_coefficient() — IC = σ_freq / μ_freq<br/>band_power() — peak, mean, proportional<br/>cycle_stats() — n_cycles, mean, SD, % normo<br/>assess_quality() — automated pass / fail</i>"]
+
+    viz["<b>Visualization</b><br/><i>plot_psd() — Power spectral density<br/>plot_egg_overview() — Time-series + phase + PSD<br/>plot_cycle_histogram() — Cycle duration distribution</i>"]
+
+    input --> ch
+    ch --> clean
+    clean --> phase
+    phase --> cycles
+    cycles --> artifacts
+    artifacts --> metrics
+    metrics --> viz
+
+    style input fill:#e8e8e8,stroke:#333,stroke-width:1px,color:#333
+    style ch fill:#f08060,stroke:#333,stroke-width:1px,color:#fff
+    style clean fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style phase fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style cycles fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style artifacts fill:#4682b4,stroke:#333,stroke-width:1px,color:#fff
+    style metrics fill:#3cb371,stroke:#333,stroke-width:1px,color:#fff
+    style viz fill:#9370db,stroke:#333,stroke-width:1px,color:#fff

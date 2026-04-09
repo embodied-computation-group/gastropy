@@ -14,29 +14,11 @@ authors:
     orcid: 0000-0001-9399-4179
     corresponding: true
     affiliation: "1, 2"
-  - name: Daniel Kluger
-    affiliation: 3
-  - name: Leah Banellis
-    affiliation: "1, 2"
-  - name: Ignacio Rebollo
-    affiliation: 4
-  - name: Nils Kroemer
-    affiliation: 5
-  - name: Edwin Dalmaijer
-    affiliation: 6
 affiliations:
   - name: Center of Functionally Integrative Neuroscience, Aarhus University, Denmark
     index: 1
   - name: Cambridge Psychiatry, University of Cambridge, United Kingdom
     index: 2
-  - name: Institute of Biomagnetism and Biosignal Analysis, University of Muenster, Germany
-    index: 3
-  - name: German Institute for Human Nutrition, Potsdam, Germany
-    index: 4
-  - name: Department of Psychiatry and Psychotherapy, University of Tuebingen, Germany
-    index: 5
-  - name: School of Psychology, University of Leeds, United Kingdom
-    index: 6
 date: 16 February 2026
 bibliography: paper.bib
 ---
@@ -50,9 +32,14 @@ cutaneous electrodes placed on the abdomen, capturing the ~0.05 Hz (3 cycles
 per minute) slow wave that governs gastric motility [@Koch2004;
 @ChenMcCallum1991]. GastroPy provides a modular pipeline spanning spectral
 analysis, bandpass filtering, instantaneous phase extraction, cycle-level
-metrics, multi-channel selection, artifact detection, time-frequency
-decomposition, and phase-locking value (PLV) computation for gastric-brain
-coupling with fMRI.
+metrics, multi-channel selection and processing, phase-based artifact
+detection, time-domain preprocessing (Hampel filtering, MAD outlier removal,
+LMMSE movement artifact attenuation; @Gharibans2018), ICA-based spatial
+denoising [@Anisimova2025], time-frequency decomposition, and phase-locking
+value (PLV) computation for gastric-brain coupling with fMRI. Recent work
+using high-density EGG and MEG has further revealed broadband spatiospectral
+signatures of gastric-brain coupling [@Berther2026], motivating the need for
+flexible, open-source analysis tools.
 
 The package is built on NumPy [@Harris2020] and SciPy [@Virtanen2020] for core
 digital signal processing, with optional dependencies on MNE-Python
@@ -122,7 +109,7 @@ relative to GastroPy.
 
 | Package | Language | EGG Pipeline | Multi-channel | Coupling | Artifact Detection |
 |---------|----------|-------------|---------------|----------|--------------------|
-| GastroPy | Python | Full | Yes | PLV + surrogates | Phase-based |
+| GastroPy | Python | Full | Yes (ICA + best-ch) | PLV + surrogates | Phase + preprocessing |
 | NeuroKit2 | Python | Basic | No | No | General |
 | MNE-Python | Python | No | N/A | No | EEG/MEG-focused |
 | StomachBrain | MATLAB | Partial | No | PLV | No |
@@ -146,14 +133,24 @@ GastroPy follows a layered, modular architecture inspired by NeuroKit2's flat
 API design [@Makowski2021]. The package is organized into seven core modules:
 
 - **`gastropy.signal`**: Low-level DSP functions (PSD via Welch's method,
-  FIR/IIR bandpass filtering, Hilbert-based phase extraction, resampling)
-  operating on plain NumPy arrays with no external dependencies beyond SciPy.
+  FIR/IIR bandpass filtering, Hilbert-based phase extraction, resampling),
+  time-domain preprocessing (Hampel spike removal, MAD outlier rejection,
+  LMMSE movement artifact attenuation; @Gharibans2018; @Anisimova2025),
+  ICA-based spatial denoising via FastICA [@Pedregosa2011], and least-squares
+  sine fitting for gastric frequency characterization. All functions operate
+  on plain NumPy arrays with no external dependencies beyond SciPy (ICA
+  additionally requires scikit-learn).
 - **`gastropy.metrics`**: Gastric rhythm quantification including band power,
   instability coefficient [@Koch2004], cycle statistics, proportion
   normogastric, and automated quality assessment.
 - **`gastropy.egg`**: High-level pipeline functions (`egg_process`,
   `egg_clean`) composing signal and metrics functions into single-call
   workflows, plus `select_best_channel` for multi-channel recordings.
+  `egg_process_multichannel` provides three strategies for multi-electrode
+  data: independent per-channel processing, automatic best-channel selection,
+  and ICA-based spatial denoising. `egg_clean` supports named method variants
+  including `"dalmaijer2025"` [@Anisimova2025], which chains Hampel spike
+  removal, LMMSE movement filtering, and IIR bandpass filtering.
 - **`gastropy.timefreq`**: Time-frequency decomposition via narrowband
   filtering and Morlet wavelets, enabling analysis of gastric rhythm dynamics
   across bradygastric, normogastric, and tachygastric bands.
@@ -198,24 +195,24 @@ The package is designed to support reproducible research by providing tested,
 documented implementations of methods that are currently scattered across
 lab-specific scripts. By lowering the barrier to rigorous EGG analysis,
 GastroPy aims to accelerate research on the brain-gut axis and facilitate
-cross-lab replication. The automated test suite (178 tests) verifies
-correctness of all signal processing, metric computation, coupling analysis,
-and visualization functions.
+cross-lab replication. The automated test suite (297 tests) verifies
+correctness of all signal processing, preprocessing, ICA denoising, metric
+computation, coupling analysis, and visualization functions.
 
 # AI Usage Disclosure
 
 Generative AI tools were used during the development of GastroPy:
 
-- **Tool**: Anthropic Claude (Claude Code CLI), models claude-sonnet-4-20250514
-  and claude-opus-4-20250514.
+- **Tool**: Anthropic Claude (Claude Code CLI), models claude-sonnet-4-6
+  and claude-opus-4-6.
 - **Scope**: AI assistance was used for code generation, test writing,
   documentation drafting, and debugging across all modules.
 - **Human oversight**: All AI-generated code was reviewed, tested, and
-  validated by the authors. Architectural decisions, algorithm selection, and
-  scientific methodology were determined by the authors. The automated test
+  validated by the author. Architectural decisions, algorithm selection, and
+  scientific methodology were determined by the author. The automated test
   suite verifies correctness of all implementations.
 
-The authors accept full responsibility for the accuracy, originality, and
+The author accepts full responsibility for the accuracy, originality, and
 licensing of all code and documentation in this package.
 
 # Acknowledgements
