@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-title: "GastroPy: A Python Package for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis"
+message: "If you use this software, please cite the preprint."
+title: "GastroPy: An Open-Source Python Toolbox for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis"
 type: software
-version: 0.1.0
+version: 0.1.1
 license: MIT
 authors:
   - family-names: Allen
@@ -22,6 +22,17 @@ authors:
     given-names: Edwin
 repository-code: "https://github.com/embodied-computation-group/gastropy"
 url: "https://embodied-computation-group.github.io/gastropy"
+preferred-citation:
+  type: article
+  title: "GastroPy: An Open-Source Python Toolbox for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis"
+  authors:
+    - family-names: Allen
+      given-names: Micah
+      orcid: "https://orcid.org/0000-0001-9399-4179"
+  year: 2026
+  journal: "PsyArXiv"
+  doi: "10.31234/osf.io/74urp_v1"
+  url: "https://osf.io/preprints/psyarxiv/74urp_v1/"
 keywords:
   - electrogastrography
   - EGG

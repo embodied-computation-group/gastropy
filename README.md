@@ -250,14 +250,20 @@ ruff format --check gastropy/
 
 ## Citation
 
-If you use GastroPy in your research, please cite:
+If you use GastroPy in your research, please cite the preprint:
+
+> Allen, M. (2026). GastroPy: An Open-Source Python Toolbox for Electrogastrography
+> Signal Processing and Gastric-Brain Coupling Analysis. *PsyArXiv*.
+> https://osf.io/preprints/psyarxiv/74urp_v1/
 
 ```bibtex
-@software{gastropy,
-  title   = {GastroPy: A Python Package for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis},
+@article{Allen2026gastropy,
+  title   = {GastroPy: An Open-Source Python Toolbox for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis},
   author  = {Allen, Micah},
   year    = {2026},
-  url     = {https://github.com/embodied-computation-group/gastropy}
+  journal = {PsyArXiv},
+  doi     = {10.31234/osf.io/74urp_v1},
+  url     = {https://osf.io/preprints/psyarxiv/74urp_v1/}
 }
 ```
 
