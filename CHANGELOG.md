@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-09
+
+Metadata and documentation update. Adds PsyArXiv preprint citation to
+README, Sphinx docs, and CITATION.cff. Version bump to 0.1.2 on PyPI.
+
 ## [0.1.1] - 2026-04-09
 
 Published to PyPI. Adds multichannel processing, ICA denoising, preprocessing
@@ -117,6 +122,7 @@ Initial public release of GastroPy.
 - **Infrastructure** — Hatch build system, Ruff linting and formatting,
   pre-commit hooks, GitHub Actions for tests/lint/docs.
 
-[Unreleased]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/embodied-computation-group/gastropy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/embodied-computation-group/gastropy/releases/tag/v0.1.0
