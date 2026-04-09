@@ -11,11 +11,6 @@ license = "MIT"
 requires-python = ">=3.10"
 authors = [
     { name = "Micah Allen" },
-    { name = "Daniel Kluger" },
-    { name = "Leah Banellis" },
-    { name = "Ignacio Rebollo" },
-    { name = "Nils Kroemer" },
-    { name = "Edwin Dalmaijer" },
 ]
 maintainers = [
     { name = "Micah Allen", email = "micah@cfin.au.dk" },
