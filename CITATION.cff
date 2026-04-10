@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite the preprint."
 title: "GastroPy: An Open-Source Python Toolbox for Electrogastrography Signal Processing and Gastric-Brain Coupling Analysis"
 type: software
-version: 0.1.1
+version: 0.1.2
 license: MIT
 authors:
   - family-names: Allen
