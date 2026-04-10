@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "gastropy"
 version = "0.1.2"
-description = "A Python package for electrogastrography (EGG) signal processing and gastric-brain coupling analysis."
+description = "Python toolbox for electrogastrography (EGG) signal processing and gastric-brain coupling analysis."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
