@@ -25,7 +25,7 @@ data       — Sample datasets
 misc       — Miscellaneous utilities
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 # Flat namespace re-exports for implemented modules
 from .coupling import *  # noqa: F401, F403
